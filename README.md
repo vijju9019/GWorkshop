@@ -17,6 +17,26 @@ This system solves the challenge of environment consistency and security by sand
 
 The system is engineered around a **Tiered Isolation Model**, ensuring that hardware resources are abstracted while maintaining high performance and security.
 
+### **System Orchestration Flow**
+
+```mermaid
+graph TD
+    A[Enterprise Entry] -->|Auth Token| B{Identity Verification}
+    B -->|Authorized| C[Cluster Dashboard]
+    B -->|Unauthorized| A
+    
+    C -->|Select Node| D[Provisioning Engine]
+    D -->|Resource Allocation| E[Container Initialization]
+    
+    E -->|Hydrate Context| F[Linux Virtual Desktop]
+    F -->|Spawn Runtime| G[Sandboxed Application contexts]
+    
+    G <-->|IPC Bridge| H[State Serialization Engine]
+    H <-->|Sync| I[(Persistent Cloud Store)]
+    
+    F ---|Session Partitioning| J[Hardware Abstraction Layer]
+```
+
 ### 1. The Virtualization Layer
 Utilizing Electron's multi-process architecture, GWorkspace spawns isolated `webview` instances for each application context. These contexts are partitioned using persistent session identifiers, preventing cross-workspace data leakage at the browser engine level (cookies, local storage, and cache).
 
