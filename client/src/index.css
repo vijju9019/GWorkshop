@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-google-blue: #1a73e8;
+  --color-google-red: #ea4335;
+  --color-google-yellow: #fbbc05;
+  --color-google-green: #34a853;
+  --color-google-gray-50: #f8f9fa;
+  --color-google-gray-100: #f1f3f4;
+  --color-google-gray-200: #e8eaed;
+  --color-google-gray-300: #dadce0;
+  --color-google-gray-400: #bdc1c6;
+  --color-google-gray-500: #9aa0a6;
+  --color-google-gray-600: #80868b;
+  --color-google-gray-700: #5f6368;
+  --color-google-gray-800: #3c4043;
+  --color-google-gray-900: #202124;
+  
+  --font-sans: "Inter", "Roboto", "Arial", sans-serif;
+  
+  --radius-google: 8px;
+  
+  --shadow-google: 0 1px 2px 0 rgba(60,64,67,0.302), 0 1px 3px 1px rgba(60,64,67,0.149);
+  --shadow-google-hover: 0 1px 3px 0 rgba(60,64,67,0.302), 0 4px 8px 3px rgba(60,64,67,0.149);
+}
+
+:root {
+  --google-blue: #1a73e8;
+  --google-gray-50: #f8f9fa;
+  --google-gray-100: #f1f3f4;
+  --google-gray-200: #e8eaed;
+  --google-gray-300: #dadce0;
+  --google-gray-700: #5f6368;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--google-gray-50);
+  color: var(--google-gray-900);
+  overflow: hidden; /* Prevent body scroll for virtual desktop */
+}
+
+@layer components {
+  .google-button {
+    @apply px-6 py-2 rounded-google font-medium transition-all duration-200 flex items-center justify-center gap-2;
+  }
+  
+  .google-button-primary {
+    @apply bg-google-blue text-white hover:bg-blue-700 shadow-sm hover:shadow;
+  }
+  
+  .google-button-secondary {
+    @apply bg-white text-google-gray-700 border border-google-gray-300 hover:bg-google-gray-50 hover:text-google-blue hover:border-google-blue;
+  }
+
+  .google-card {
+    @apply bg-white border border-google-gray-200 rounded-google shadow-google transition-shadow duration-200;
+  }
+
+  .google-card-hover {
+    @apply hover:shadow-google-hover;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-6 py-3 text-google-gray-700 hover:bg-google-gray-100 cursor-pointer transition-colors border-l-4 border-transparent;
+  }
+
+  .sidebar-item-active {
+    @apply bg-blue-50 text-google-blue border-l-google-blue;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--google-gray-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--google-gray-400);
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
