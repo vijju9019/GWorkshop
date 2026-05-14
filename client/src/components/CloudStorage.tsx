@@ -10,7 +10,9 @@ import {
   Video, 
   File,
   ChevronRight,
-  HardDrive
+  HardDrive,
+  Trash2,
+  Download
 } from 'lucide-react';
 
 interface FileItem {
@@ -22,7 +24,7 @@ interface FileItem {
 }
 
 const CloudStorage: React.FC = () => {
-  const [files] = useState<FileItem[]>([
+  const [files, setFiles] = useState<FileItem[]>([
     { id: '1', name: 'Project Proposals', type: 'folder', size: '--', modified: 'Oct 12, 2026' },
     { id: '2', name: 'Design Assets', type: 'folder', size: '--', modified: 'Oct 14, 2026' },
     { id: '3', name: 'System Logs.txt', type: 'document', size: '12 KB', modified: 'Just now' },
@@ -31,9 +33,16 @@ const CloudStorage: React.FC = () => {
     { id: '6', name: 'Tutorial_Video.mp4', type: 'video', size: '18 MB', modified: '3 days ago' },
   ]);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
   const storageUsed = 120;
   const maxStorage = 500;
   const percentage = (storageUsed / maxStorage) * 100;
+
+  const filteredFiles = files.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -45,20 +54,53 @@ const CloudStorage: React.FC = () => {
     }
   };
 
+  const handleNewFolder = () => {
+    const newFolder: FileItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: `Untitled Folder ${files.filter(f => f.type === 'folder').length + 1}`,
+      type: 'folder',
+      size: '--',
+      modified: 'Just now'
+    };
+    setFiles([newFolder, ...files]);
+  };
+
+  const handleUpload = () => {
+    const newFile: FileItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: `Uploaded_File_${Math.floor(Math.random() * 1000)}.pdf`,
+      type: 'document',
+      size: '2.5 MB',
+      modified: 'Just now'
+    };
+    setFiles([newFile, ...files]);
+  };
+
+  const handleDelete = (id: string) => {
+    setFiles(files.filter(f => f.id !== id));
+    setActiveMenuId(null);
+  };
+
   return (
-    <div className="flex flex-col h-full animate-in fade-in duration-300">
+    <div className="flex flex-col h-full animate-in fade-in duration-300 select-none">
       {/* Header */}
-      <div className="p-6 border-b border-google-gray-200 bg-white flex justify-between items-center">
+      <div className="p-6 border-b border-google-gray-200 bg-white flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
           <Cloud className="text-google-blue" size={24} />
           <h1 className="text-xl font-medium text-google-gray-900">Cloud Storage</h1>
         </div>
         <div className="flex gap-3">
-          <button className="google-button google-button-secondary">
+          <button 
+            onClick={handleNewFolder}
+            className="google-button google-button-secondary py-1.5 text-sm"
+          >
             <FolderPlus size={18} />
             New Folder
           </button>
-          <button className="google-button google-button-primary">
+          <button 
+            onClick={handleUpload}
+            className="google-button google-button-primary py-1.5 text-sm"
+          >
             <Upload size={18} />
             Upload
           </button>
@@ -67,13 +109,15 @@ const CloudStorage: React.FC = () => {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
+        <div className="flex-1 overflow-y-auto p-6 bg-white scrollbar-thin">
           <div className="relative mb-6">
             <Search className="absolute left-3 top-2.5 text-google-gray-500" size={18} />
             <input 
               type="text" 
               placeholder="Search in Drive"
-              className="w-full pl-10 pr-4 py-2 bg-google-gray-100 rounded-google focus:bg-white focus:ring-2 focus:ring-google-blue border-none transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-google-gray-100 rounded-google focus:bg-white focus:ring-2 focus:ring-google-blue border-none transition-all outline-none"
             />
           </div>
 
@@ -92,7 +136,7 @@ const CloudStorage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-google-gray-50">
-              {files.map(file => (
+              {filteredFiles.map(file => (
                 <tr key={file.id} className="hover:bg-google-gray-50 group transition-colors">
                   <td className="py-3 flex items-center gap-3">
                     {getIcon(file.type)}
@@ -101,20 +145,43 @@ const CloudStorage: React.FC = () => {
                   <td className="py-3 text-sm text-google-gray-600">Me</td>
                   <td className="py-3 text-sm text-google-gray-600">{file.modified}</td>
                   <td className="py-3 text-sm text-google-gray-600">{file.size}</td>
-                  <td className="py-3 text-right">
-                    <button className="p-1 hover:bg-google-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="py-3 text-right relative">
+                    <button 
+                      onClick={() => setActiveMenuId(activeMenuId === file.id ? null : file.id)}
+                      className="p-1 hover:bg-google-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       <MoreVertical size={16} />
                     </button>
+                    {activeMenuId === file.id && (
+                      <div className="absolute right-0 top-10 w-36 bg-white rounded-lg shadow-xl border border-google-gray-200 py-1 z-10 animate-in fade-in zoom-in-95 duration-100">
+                        <button className="w-full text-left px-3 py-1.5 text-xs hover:bg-google-gray-100 flex items-center gap-2">
+                          <Download size={14} /> Download
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(file.id)}
+                          className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
+              {filteredFiles.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-google-gray-500 italic">
+                    No files found matching "{searchQuery}"
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Sidebar Info */}
-        <div className="w-72 border-l border-google-gray-200 bg-google-gray-50 p-6 hidden xl:block">
-          <div className="flex flex-col items-center text-center mb-8">
+        <div className="w-72 border-l border-google-gray-200 bg-google-gray-50 p-6 hidden xl:flex flex-col">
+          <div className="flex flex-col items-center text-center mb-8 shrink-0">
             <div className="w-20 h-20 bg-google-blue bg-opacity-10 rounded-full flex items-center justify-center text-google-blue mb-4">
               <HardDrive size={40} />
             </div>
@@ -122,7 +189,7 @@ const CloudStorage: React.FC = () => {
             <p className="text-sm text-google-gray-600">500 MB Free Plan</p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 overflow-y-auto">
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-google-gray-700">Used Storage</span>
@@ -130,7 +197,7 @@ const CloudStorage: React.FC = () => {
               </div>
               <div className="w-full bg-google-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-google-blue h-2 rounded-full" 
+                  className="bg-google-blue h-2 rounded-full transition-all duration-500" 
                   style={{ width: `${percentage}%` }}
                 ></div>
               </div>

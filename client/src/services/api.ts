@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Workspace } from '../types';
+import type { Workspace } from '../types';
 
 const API_URL = 'http://localhost:3001/api';
 
