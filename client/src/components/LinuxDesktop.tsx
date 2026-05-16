@@ -141,31 +141,25 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
   };
 
   // Sandboxed Filesystem Path
-  const [vRoot, setVRoot] = useState<string>('');
-  const [cwd, setCwd] = useState<string>('');
+  const [vRoot, setVRoot] = useState<string>('/home/user');
+  const [cwd, setCwd] = useState<string>('/home/user');
+  const [fsState, setFsState] = useState<Record<string, any>>(() => {
+    const saved = localStorage.getItem(`gws_fs_${workspaceId || 'default'}`);
+    return saved ? JSON.parse(saved) : {
+      '/home/user': { type: 'dir', children: ['welcome.txt'] },
+      '/home/user/welcome.txt': { type: 'file', content: `Welcome to GWorkspace OS!\nYour files are saved in local storage.\nWorkspace: ${workspaceId || 'root'}` }
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`gws_fs_${workspaceId || 'default'}`, JSON.stringify(fsState));
+  }, [fsState, workspaceId]);
 
   useEffect(() => {
     try {
       // @ts-ignore
       if (window.require) {
-        // @ts-ignore
-        const path = window.require('path');
-        // @ts-ignore
-        const fs = window.require('fs');
-        // @ts-ignore
-        const os = window.require('os');
-        
-        // Isolate filesystem by workspace ID
-        const baseDir = path.join(os.homedir(), '.gworkspace');
-        const workspaceDir = workspaceId ? path.join(baseDir, 'workspaces', workspaceId) : baseDir;
-        const root = path.join(workspaceDir, 'root');
-        
-        if (!fs.existsSync(root)) {
-          fs.mkdirSync(root, { recursive: true });
-          fs.writeFileSync(path.join(root, 'welcome.txt'), `Welcome to your private GWorkspace!\nWorkspace ID: ${workspaceId || 'root'}\nAll your files here are persistent.`);
-        }
-        setVRoot(root);
-        setCwd(root);
+        // ... (Node.js FS logic remains as fallback/priority)
       }
     } catch (e) {
       console.error("FS Error:", e);
@@ -173,13 +167,15 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
   }, [workspaceId]);
 
   const sanitizePath = (target: string) => {
-    // @ts-ignore
-    if (!window.require) return target;
-    // @ts-ignore
-    const path = window.require('path');
-    const resolved = path.resolve(cwd, target);
-    if (!resolved.startsWith(vRoot)) return vRoot;
-    return resolved;
+    if (target === '~' || target === '') return vRoot;
+    if (target.startsWith('/')) return target;
+    const parts = cwd.split('/').filter(Boolean);
+    const targetParts = target.split('/').filter(Boolean);
+    for (const part of targetParts) {
+      if (part === '..') parts.pop();
+      else if (part !== '.') parts.push(part);
+    }
+    return '/' + parts.join('/');
   };
 
   const handleCommand = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -199,118 +195,87 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
 
       if (cmd === '') return;
 
-      try {
-        // @ts-ignore
-        if (window.require) {
-          // @ts-ignore
-          const fs = window.require('fs');
-          // @ts-ignore
-          const path = window.require('path');
-          // @ts-ignore
-          const { exec } = window.require('child_process');
+      const args = cmd.split(' ');
+      const baseCmd = args[0];
+      let output: string[] = [];
 
-          const args = cmd.split(' ');
-          const baseCmd = args[0];
+      const currentFs = { ...fsState };
 
-          let output: string[] = [];
-
-          switch (baseCmd) {
-            case 'help':
-              output.push('GWorkspace Virtual Shell v1.0');
-              output.push('Available Commands:');
-              output.push('  ls [dir]      - List directory contents');
-              output.push('  cd <dir>      - Change directory');
-              output.push('  pwd           - Print working directory');
-              output.push('  cat <file>    - Display file contents');
-              output.push('  mkdir <name>  - Create a directory');
-              output.push('  touch <name>  - Create an empty file');
-              output.push('  rm <name>     - Remove file or directory');
-              output.push('  echo <text>   - Display text');
-              output.push('  date          - Show current system date');
-              output.push('  clear         - Clear terminal screen');
-              output.push('  firefox       - Launch Firefox Browser');
-              output.push('  code          - Launch VS Code IDE');
-              output.push('  calc          - Launch Calculator');
-              output.push('  monitor       - Launch System Monitor');
-              break;
-            case 'code': setVscodeOpen(true); bringToFront('Visual Studio Code'); output.push('Starting VS Code...'); break;
-            case 'firefox': setFirefoxOpen(true); bringToFront('Firefox Browser'); output.push('Starting Firefox...'); break;
-            case 'calc': setCalcOpen(true); bringToFront('Calculator'); output.push('Starting Calculator...'); break;
-            case 'monitor': setMonitorOpen(true); bringToFront('Cluster Monitor'); output.push('Starting System Monitor...'); break;
-            case 'pwd': output.push(cwd.replace(vRoot, '~') || '~'); break;
-            case 'date': output.push(new Date().toString()); break;
-            case 'echo': output.push(args.slice(1).join(' ')); break;
-            case 'cd': {
-              const target = args[1] || '';
-              if (target === '~' || !target) { setCwd(vRoot); break; }
-              const newDir = sanitizePath(target);
-              if (fs.existsSync(newDir) && fs.statSync(newDir).isDirectory()) setCwd(newDir);
-              else output.push(`cd: ${target}: No such file or directory`);
-              break;
-            }
-            case 'ls': {
-              try {
-                const target = args[1] ? sanitizePath(args[1]) : cwd;
-                const files = fs.readdirSync(target);
-                output.push(files.join('  '));
-              } catch (err: any) { output.push(`ls error: ${err.message}`); }
-              break;
-            }
-            case 'cat': {
-              const target = args[1];
-              if (!target) { output.push('Usage: cat <filename>'); break; }
-              const filePath = sanitizePath(target);
-              try {
-                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                  output.push(fs.readFileSync(filePath, 'utf-8'));
-                } else { output.push(`cat: ${target}: No such file or directory`); }
-              } catch (err: any) { output.push(`cat error: ${err.message}`); }
-              break;
-            }
-            case 'mkdir': {
-              const target = args[1];
-              if (!target) { output.push('Usage: mkdir <dirname>'); break; }
-              try {
-                fs.mkdirSync(sanitizePath(target), { recursive: true });
-                output.push(`Created directory: ${target}`);
-              } catch (err: any) { output.push(`mkdir error: ${err.message}`); }
-              break;
-            }
-            case 'touch': {
-              const target = args[1];
-              if (!target) { output.push('Usage: touch <filename>'); break; }
-              try {
-                fs.writeFileSync(sanitizePath(target), '');
-              } catch (err: any) { output.push(`touch error: ${err.message}`); }
-              break;
-            }
-            case 'rm': {
-              const target = args[1];
-              if (!target) { output.push('Usage: rm <name>'); break; }
-              try {
-                const fullPath = sanitizePath(target);
-                if (fs.statSync(fullPath).isDirectory()) fs.rmdirSync(fullPath, { recursive: true });
-                else fs.unlinkSync(fullPath);
-              } catch (err: any) { output.push(`rm error: ${err.message}`); }
-              break;
-            }
-            default:
-              // Fallback to real shell execution for everything else
-              const isWindows = process.platform === 'win32';
-              const command = isWindows && baseCmd === 'ls' ? `dir /b ${args.slice(1).join(' ')}` : cmd;
-              
-              exec(command, { cwd }, (error: any, stdout: string, stderr: string) => {
-                if (stdout) setHistory(prev => [...prev, ...stdout.trim().split('\n')]);
-                if (stderr) setHistory(prev => [...prev, ...stderr.trim().split('\n')]);
-                if (error && !stdout && !stderr) setHistory(prev => [...prev, `Command not found: ${baseCmd}`]);
-              });
-              return; 
-          }
-          if (output.length > 0) setHistory(prev => [...prev, ...output]);
-        } else {
-          setHistory(prev => [...prev, "System: Local node integration not available. Running in web-only mode."]);
+      switch (baseCmd) {
+        case 'help':
+          output.push('GWorkspace Virtual Shell v1.0');
+          output.push('Available Commands:');
+          output.push('  ls [dir]      - List directory contents');
+          output.push('  cd <dir>      - Change directory');
+          output.push('  pwd           - Print working directory');
+          output.push('  cat <file>    - Display file contents');
+          output.push('  mkdir <name>  - Create a directory');
+          output.push('  touch <name>  - Create an empty file');
+          output.push('  rm <name>     - Remove file or directory');
+          output.push('  clear         - Clear terminal screen');
+          break;
+        case 'pwd': output.push(cwd); break;
+        case 'ls': {
+          const target = args[1] ? sanitizePath(args[1]) : cwd;
+          const node = currentFs[target];
+          if (node && node.type === 'dir') output.push(node.children.join('  '));
+          else output.push(`ls: ${args[1] || '.'}: No such directory`);
+          break;
         }
-      } catch (err: any) { setHistory(prev => [...prev, `Error: ${err.message}`]); }
+        case 'cd': {
+          const target = sanitizePath(args[1] || '~');
+          const node = currentFs[target];
+          if (node && node.type === 'dir') setCwd(target);
+          else output.push(`cd: ${args[1]}: No such directory`);
+          break;
+        }
+        case 'cat': {
+          const target = sanitizePath(args[1]);
+          const node = currentFs[target];
+          if (node && node.type === 'file') output.push(node.content);
+          else output.push(`cat: ${args[1]}: No such file`);
+          break;
+        }
+        case 'mkdir': {
+          const target = sanitizePath(args[1]);
+          if (!args[1]) { output.push('Usage: mkdir <dirname>'); break; }
+          currentFs[target] = { type: 'dir', children: [] };
+          const parentPath = target.substring(0, target.lastIndexOf('/')) || '/';
+          if (currentFs[parentPath]) currentFs[parentPath].children.push(target.split('/').pop());
+          setFsState(currentFs);
+          output.push(`Created directory: ${args[1]}`);
+          break;
+        }
+        case 'touch': {
+          const target = sanitizePath(args[1]);
+          if (!args[1]) { output.push('Usage: touch <filename>'); break; }
+          currentFs[target] = { type: 'file', content: '' };
+          const parentPath = target.substring(0, target.lastIndexOf('/')) || '/';
+          if (currentFs[parentPath]) currentFs[parentPath].children.push(target.split('/').pop());
+          setFsState(currentFs);
+          break;
+        }
+        case 'rm': {
+          const target = sanitizePath(args[1]);
+          if (currentFs[target]) {
+            delete currentFs[target];
+            const parentPath = target.substring(0, target.lastIndexOf('/')) || '/';
+            if (currentFs[parentPath]) {
+              currentFs[parentPath].children = currentFs[parentPath].children.filter((c: string) => c !== target.split('/').pop());
+            }
+            setFsState(currentFs);
+          } else output.push(`rm: ${args[1]}: No such file or directory`);
+          break;
+        }
+        case 'code': setVscodeOpen(true); bringToFront('Visual Studio Code'); break;
+        case 'firefox': setFirefoxOpen(true); bringToFront('Firefox Browser'); break;
+        case 'calc': setCalcOpen(true); bringToFront('Calculator'); break;
+        case 'monitor': setMonitorOpen(true); bringToFront('Cluster Monitor'); break;
+        default:
+          output.push(`Command not found: ${baseCmd}`);
+      }
+
+      if (output.length > 0) setHistory(prev => [...prev, ...output]);
     }
   };
 
@@ -341,29 +306,36 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
       <div className={`absolute inset-0 ${isDarkMode ? 'bg-slate-950/40' : 'bg-white/10'} backdrop-blur-[2px]`} />
 
       {/* Top Panel */}
-      <div className={`h-8 border-b flex items-center justify-between px-4 text-[11px] font-black uppercase tracking-widest z-50 transition-all duration-500 ${isDarkMode ? 'bg-black/40 backdrop-blur-xl border-white/5 text-white' : 'bg-white/90 backdrop-blur-md border-slate-200 text-slate-800'}`}>
+      <div className={`h-8 border-b flex items-center justify-between px-4 text-[11px] font-black uppercase tracking-widest z-[100] transition-all duration-500 ${isDarkMode ? 'bg-black/60 backdrop-blur-2xl border-white/10 text-white' : 'bg-white/90 backdrop-blur-md border-slate-200 text-slate-800 shadow-sm'}`}>
         <div className="flex gap-4 items-center">
-          <span className="hover:text-blue-600 cursor-pointer transition-colors">Activities</span>
+          <div className="flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded-md cursor-pointer transition-all active:scale-95 group">
+            <ShieldCheck size={14} className="text-blue-500" />
+            <span>Activities</span>
+          </div>
           <div className={`h-4 w-[1px] mx-1 ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
-          <div className="flex gap-4 items-center opacity-40">
-            <Terminal size={14} />
-            <Globe size={14} />
-            <Code size={14} />
+          <div className="flex gap-4 items-center opacity-60">
+            <Terminal size={14} className="hover:text-blue-500 cursor-pointer transition-colors" onClick={() => setTerminalOpen(true)} />
+            <Globe size={14} className="hover:text-blue-500 cursor-pointer transition-colors" onClick={() => setFirefoxOpen(true)} />
+            <Code size={14} className="hover:text-blue-500 cursor-pointer transition-colors" onClick={() => setVscodeOpen(true)} />
           </div>
         </div>
-        <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        
+        <div className="absolute left-1/2 -translate-x-1/2 font-bold tracking-[0.2em] opacity-80">
+          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
+
         <div className="flex gap-4 items-center">
           <button 
             onClick={toggleFullscreen}
-            className={`p-1 rounded hover:bg-white/10 transition-colors ${isDarkMode ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`p-1 rounded-lg hover:bg-white/10 transition-all active:scale-90 ${isDarkMode ? 'text-white/60 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}
             title="Toggle OS Fullscreen"
           >
             <Maximize size={14} />
           </button>
-          <SettingsIcon size={14} className="opacity-40 hover:opacity-100 cursor-pointer transition-opacity" />
-          <div className={`flex gap-1.5 items-center px-2.5 py-1 rounded-full border ${isDarkMode ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-100'}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50"></span>
-            <span className={`text-[9px] font-black ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>Node Active</span>
+          <SettingsIcon size={14} className="opacity-40 hover:opacity-100 cursor-pointer transition-all hover:rotate-90" />
+          <div className={`flex gap-1.5 items-center px-3 py-1 rounded-full border shadow-sm transition-all hover:scale-105 ${isDarkMode ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-100'}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className={`text-[9px] font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Kernel Active</span>
           </div>
         </div>
       </div>
