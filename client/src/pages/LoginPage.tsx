@@ -144,6 +144,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode }) => {
 
   const handleGuestLogin = () => {
     setLoading(true);
+    setError('');
+    // Simulate a provisioning sequence for guest access
     setTimeout(() => {
       onLogin({
         displayName: 'Guest Observer',
@@ -152,11 +154,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode }) => {
         uid: 'guest-session-' + Math.random().toString(36).substr(2, 9),
         isGuest: true
       });
-    }, 1000);
+    }, 2000);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans bg-[#f8fafc]">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start md:justify-center p-6 py-12 relative overflow-y-auto font-sans bg-[#f8fafc]">
       {/* Dynamic Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-blue-600/5 rounded-full blur-[160px] animate-pulse" />
@@ -321,7 +323,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode }) => {
               <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform">
                 <User size={14} />
               </div>
-              <span className="text-[11px] uppercase tracking-[0.1em]">Instant Guest Deployment</span>
+              <span className="text-[11px] uppercase tracking-[0.1em]">
+                {loading ? 'Provisioning...' : 'Instant Guest Deployment'}
+              </span>
             </button>
             
             <button

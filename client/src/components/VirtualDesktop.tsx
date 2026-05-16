@@ -58,26 +58,9 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   const [wallpaper, setWallpaper] = useState('/wallpaper.png');
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
 
-  useEffect(() => {
-    // Auto-boot primary app based on template
-    if (workspace) {
-      setTimeout(() => {
-        let primaryApp: AppConfig | undefined;
-        if (workspace.template === 'Ubuntu Desktop' || workspace.template === 'Cloud Debian') {
-          primaryApp = GOOGLE_APPS.find(a => a.id === 'linux');
-        } else if (workspace.template === 'ChromeOS Mini') {
-          primaryApp = GOOGLE_APPS.find(a => a.id === 'chrome');
-        } else if (workspace.template === 'Windows 11 Light') {
-          primaryApp = GOOGLE_APPS.find(a => a.id === 'settings');
-        }
+  // Removed auto-launch logic to ensure the user lands on a clean desktop
+  // Apps must now be opened manually via the launcher.
 
-        if (primaryApp) {
-          openApp(primaryApp);
-          setLauncherOpen(false);
-        }
-      }, 500);
-    }
-  }, [workspace?.id]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -119,10 +102,10 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
       isMinimized: false,
       isMaximized: false,
       zIndex: Math.max(0, ...windows.map(w => w.zIndex)) + 1,
-      x: 100 + (windows.length * 30),
-      y: 50 + (windows.length * 30),
-      width: app.id === 'settings' ? 900 : 800,
-      height: app.id === 'settings' ? 620 : 600,
+      x: 150 + (windows.length * 40),
+      y: 100 + (windows.length * 40),
+      width: app.id === 'settings' ? 900 : 950,
+      height: app.id === 'settings' ? 620 : 650,
     };
 
     setWindows([...windows, newWindow]);

@@ -69,6 +69,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchWorkspaces();
+      // Removed auto-launch for guests to prevent "opening directly" issue
+      // Guests will now land on the dashboard and click "Open Session" manually.
     } else {
       setWorkspaces([]);
     }

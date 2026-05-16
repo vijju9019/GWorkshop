@@ -28,6 +28,8 @@ interface LinuxDesktopProps {
   workspaceId?: string;
 }
 
+import { Rnd } from 'react-rnd';
+
 const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId }) => {
   const username = (user?.displayName || user?.email || 'user').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   const terminalPrompt = `${username}@gworkspace`;
@@ -53,6 +55,13 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
   ]);
   const [input, setInput] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
+
+  // Window Z-Index Management
+  const [zIndices, setZIndices] = useState<Record<string, number>>({});
+  const bringToFront = (title: string) => {
+    const maxZ = Math.max(0, ...Object.values(zIndices)) + 1;
+    setZIndices(prev => ({ ...prev, [title]: maxZ }));
+  };
 
   // Sandboxed Filesystem Path
   const [vRoot, setVRoot] = useState<string>('');
@@ -130,14 +139,30 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
 
           switch (baseCmd) {
             case 'help':
-              output.push('Core: cd, ls, pwd, cat, mkdir, rm, touch, echo, date');
-              output.push('Apps: firefox, code, calc, monitor');
+              output.push('GWorkspace Virtual Shell v1.0');
+              output.push('Available Commands:');
+              output.push('  ls [dir]      - List directory contents');
+              output.push('  cd <dir>      - Change directory');
+              output.push('  pwd           - Print working directory');
+              output.push('  cat <file>    - Display file contents');
+              output.push('  mkdir <name>  - Create a directory');
+              output.push('  touch <name>  - Create an empty file');
+              output.push('  rm <name>     - Remove file or directory');
+              output.push('  echo <text>   - Display text');
+              output.push('  date          - Show current system date');
+              output.push('  clear         - Clear terminal screen');
+              output.push('  firefox       - Launch Firefox Browser');
+              output.push('  code          - Launch VS Code IDE');
+              output.push('  calc          - Launch Calculator');
+              output.push('  monitor       - Launch System Monitor');
               break;
-            case 'code': setVscodeOpen(true); output.push('Starting VS Code...'); break;
-            case 'firefox': setFirefoxOpen(true); output.push('Starting Firefox...'); break;
-            case 'calc': setCalcOpen(true); output.push('Starting Calculator...'); break;
-            case 'monitor': setMonitorOpen(true); output.push('Starting System Monitor...'); break;
+            case 'code': setVscodeOpen(true); bringToFront('Visual Studio Code'); output.push('Starting VS Code...'); break;
+            case 'firefox': setFirefoxOpen(true); bringToFront('Firefox Browser'); output.push('Starting Firefox...'); break;
+            case 'calc': setCalcOpen(true); bringToFront('Calculator'); output.push('Starting Calculator...'); break;
+            case 'monitor': setMonitorOpen(true); bringToFront('Cluster Monitor'); output.push('Starting System Monitor...'); break;
             case 'pwd': output.push(cwd.replace(vRoot, '~') || '~'); break;
+            case 'date': output.push(new Date().toString()); break;
+            case 'echo': output.push(args.slice(1).join(' ')); break;
             case 'cd': {
               const target = args[1] || '';
               if (target === '~' || !target) { setCwd(vRoot); break; }
@@ -148,19 +173,65 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
             }
             case 'ls': {
               try {
-                const files = fs.readdirSync(cwd);
+                const target = args[1] ? sanitizePath(args[1]) : cwd;
+                const files = fs.readdirSync(target);
                 output.push(files.join('  '));
               } catch (err: any) { output.push(`ls error: ${err.message}`); }
               break;
             }
+            case 'cat': {
+              const target = args[1];
+              if (!target) { output.push('Usage: cat <filename>'); break; }
+              const filePath = sanitizePath(target);
+              try {
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                  output.push(fs.readFileSync(filePath, 'utf-8'));
+                } else { output.push(`cat: ${target}: No such file or directory`); }
+              } catch (err: any) { output.push(`cat error: ${err.message}`); }
+              break;
+            }
+            case 'mkdir': {
+              const target = args[1];
+              if (!target) { output.push('Usage: mkdir <dirname>'); break; }
+              try {
+                fs.mkdirSync(sanitizePath(target), { recursive: true });
+                output.push(`Created directory: ${target}`);
+              } catch (err: any) { output.push(`mkdir error: ${err.message}`); }
+              break;
+            }
+            case 'touch': {
+              const target = args[1];
+              if (!target) { output.push('Usage: touch <filename>'); break; }
+              try {
+                fs.writeFileSync(sanitizePath(target), '');
+              } catch (err: any) { output.push(`touch error: ${err.message}`); }
+              break;
+            }
+            case 'rm': {
+              const target = args[1];
+              if (!target) { output.push('Usage: rm <name>'); break; }
+              try {
+                const fullPath = sanitizePath(target);
+                if (fs.statSync(fullPath).isDirectory()) fs.rmdirSync(fullPath, { recursive: true });
+                else fs.unlinkSync(fullPath);
+              } catch (err: any) { output.push(`rm error: ${err.message}`); }
+              break;
+            }
             default:
-              exec(cmd, { cwd }, (_error: any, stdout: string, stderr: string) => {
+              // Fallback to real shell execution for everything else
+              const isWindows = process.platform === 'win32';
+              const command = isWindows && baseCmd === 'ls' ? `dir /b ${args.slice(1).join(' ')}` : cmd;
+              
+              exec(command, { cwd }, (error: any, stdout: string, stderr: string) => {
                 if (stdout) setHistory(prev => [...prev, ...stdout.trim().split('\n')]);
                 if (stderr) setHistory(prev => [...prev, ...stderr.trim().split('\n')]);
+                if (error && !stdout && !stderr) setHistory(prev => [...prev, `Command not found: ${baseCmd}`]);
               });
               return; 
           }
           if (output.length > 0) setHistory(prev => [...prev, ...output]);
+        } else {
+          setHistory(prev => [...prev, "System: Local node integration not available. Running in web-only mode."]);
         }
       } catch (err: any) { setHistory(prev => [...prev, `Error: ${err.message}`]); }
     }
@@ -178,37 +249,52 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
     }
   };
 
-  const Window = ({ title, icon: Icon, isOpen, onClose, children, className = "", width = "800px", height = "500px" }: any) => {
+  const Window = ({ title, icon: Icon, isOpen, onClose, children, className = "", width = 800, height = 500, defaultX = 150, defaultY = 100 }: any) => {
     if (!isOpen) return null;
     const isMax = maximizedApps[title] || false;
     const toggleMax = () => setMaximizedApps(prev => ({ ...prev, [title]: !isMax }));
+    
+    const isTerminal = title.toLowerCase().includes('terminal');
+    const winBg = isTerminal ? 'bg-[#0f172a]' : (isDarkMode ? 'bg-[#1e293b]' : 'bg-white');
+    const borderColor = isTerminal ? 'border-white/10' : (isDarkMode ? 'border-white/5' : 'border-slate-200');
 
     return (
-      <div 
-        className={`absolute shadow-2xl flex flex-col overflow-hidden border z-30 animate-in zoom-in-95 duration-200 ${className} ${isDarkMode ? 'bg-[#1e293b] border-white/5' : 'bg-white border-slate-200'} ${isMax ? 'inset-0 !w-full !h-full !top-0 !left-0 rounded-none' : 'rounded-2xl'}`}
-        style={isMax ? {} : { width, height, top: '10%', left: '15%' }}
+      <Rnd
+        default={{ x: defaultX, y: defaultY, width, height }}
+        size={isMax ? { width: '100%', height: '100%' } : undefined}
+        position={isMax ? { x: 0, y: 0 } : undefined}
+        disableDragging={isMax}
+        enableResizing={!isMax}
+        bounds="parent"
+        dragHandleClassName="internal-window-header"
+        onDragStart={() => bringToFront(title)}
+        style={{ zIndex: zIndices[title] || 30 }}
       >
-        <div className={`h-11 flex items-center justify-between px-4 select-none border-b shrink-0 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-          <div className="flex items-center gap-2">
-            <Icon size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-500'} />
-            <span className={`text-[11px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{title}</span>
+        <div 
+          className={`w-full h-full shadow-2xl flex flex-col overflow-hidden border animate-in zoom-in-95 duration-200 ${className} ${winBg} ${borderColor} ${isMax ? 'rounded-none' : 'rounded-2xl'}`}
+        >
+          <div className={`internal-window-header h-11 flex items-center justify-between px-4 select-none border-b shrink-0 cursor-grab active:cursor-grabbing ${isTerminal ? 'bg-black/40 border-white/10' : (isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200')}`}>
+            <div className="flex items-center gap-2 pointer-events-none">
+              <Icon size={16} className={isTerminal || isDarkMode ? 'text-white/40' : 'text-slate-500'} />
+              <span className={`text-[11px] font-black uppercase tracking-widest ${isTerminal || isDarkMode ? 'text-white' : 'text-slate-800'}`}>{title}</span>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleMax(); }}
+                title={isMax ? "Restore" : "Full Screen"}
+                className={`w-3 h-3 rounded-full transition-colors flex items-center justify-center group ${isTerminal || isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}
+              >
+                {isMax ? <Minimize2 size={8} className="text-blue-500" /> : <Maximize2 size={8} className="opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />}
+              </button>
+              <button className={`w-3 h-3 rounded-full transition-colors ${isTerminal || isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}></button>
+              <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="w-3 h-3 rounded-full bg-red-500/20 hover:bg-red-500 text-red-500 flex items-center justify-center transition-colors group">
+                <X size={8} strokeWidth={4} className="opacity-0 group-hover:opacity-100 text-white transition-opacity" />
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={toggleMax}
-              title={isMax ? "Restore" : "Full Screen"}
-              className={`w-3 h-3 rounded-full transition-colors flex items-center justify-center group ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}
-            >
-              {isMax ? <Minimize2 size={8} className="text-blue-500" /> : <Maximize2 size={8} className="opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />}
-            </button>
-            <button className={`w-3 h-3 rounded-full transition-colors ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}></button>
-            <button onClick={onClose} className="w-3 h-3 rounded-full bg-red-500/20 hover:bg-red-500 text-red-500 flex items-center justify-center transition-colors group">
-              <X size={8} strokeWidth={4} className="opacity-0 group-hover:opacity-100 text-white transition-opacity" />
-            </button>
-          </div>
+          <div className="flex-1 overflow-hidden" onMouseDown={() => bringToFront(title)}>{children}</div>
         </div>
-        <div className="flex-1 overflow-hidden">{children}</div>
-      </div>
+      </Rnd>
     );
   };
 
@@ -273,12 +359,12 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         ))}
 
         {/* VS Code Window */}
-        <Window title="Visual Studio Code" icon={Code} isOpen={vscodeOpen} onClose={() => setVscodeOpen(false)} width="1100px" height="700px">
-          <iframe src="https://stackblitz.com/edit/node-js-sandbox?embed=1&theme=dark" className="w-full h-full border-none bg-[#1e1e1e]" title="VS Code" allow="cross-origin-isolated" />
+        <Window title="Visual Studio Code" icon={Code} isOpen={vscodeOpen} onClose={() => setVscodeOpen(false)} width={1000} height={650}>
+          <webview src="https://vscode.dev" className="w-full h-full border-none" />
         </Window>
 
         {/* Calculator Window */}
-        <Window title="Calculator" icon={CalcIcon} isOpen={calcOpen} onClose={() => setCalcOpen(false)} width="300px" height="420px" className="!left-[40%]">
+        <Window title="Calculator" icon={CalcIcon} isOpen={calcOpen} onClose={() => setCalcOpen(false)} width={300} height={420} defaultX={400} defaultY={150}>
           <div className={`p-6 h-full flex flex-col gap-4 ${isDarkMode ? 'bg-[#1e293b]' : 'bg-slate-50'}`}>
             <div className={`p-5 rounded-2xl text-right text-3xl font-black shadow-sm border transition-colors ${isDarkMode ? 'bg-white/5 border-white/5 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
               {calcValue}
@@ -305,7 +391,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         </Window>
 
         {/* System Monitor Window */}
-        <Window title="Cluster Monitor" icon={Activity} isOpen={monitorOpen} onClose={() => setMonitorOpen(false)} width="600px" height="450px" className="!left-[30%]">
+        <Window title="Cluster Monitor" icon={Activity} isOpen={monitorOpen} onClose={() => setMonitorOpen(false)} width={600} height={450} defaultX={300} defaultY={100}>
           <div className="p-8 space-y-8">
             <div className="space-y-3">
               <div className={`flex justify-between text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white/20' : 'text-slate-400'}`}><span>CPU Payload</span><span>12%</span></div>
@@ -333,7 +419,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         </Window>
 
         {/* Firefox Window */}
-        <Window title="Firefox Browser" icon={Globe} isOpen={firefoxOpen} onClose={() => setFirefoxOpen(false)} width="1000px" height="650px" className="!top-[5%] !left-[10%]">
+        <Window title="Firefox Browser" icon={Globe} isOpen={firefoxOpen} onClose={() => setFirefoxOpen(false)} width={900} height={600} defaultX={100} defaultY={50}>
           <div className="flex flex-col h-full bg-white">
             <div className={`p-3 flex gap-3 border-b ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
               <input 
@@ -347,7 +433,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         </Window>
 
         {/* Workspace Root Window */}
-        <Window title="File Infrastructure" icon={Folder} isOpen={homeOpen} onClose={() => setHomeOpen(false)} width="700px" height="450px" className="!top-[20%] !left-[25%]">
+        <Window title="File Infrastructure" icon={Folder} isOpen={homeOpen} onClose={() => setHomeOpen(false)} width={700} height={450} defaultX={250} defaultY={150}>
           <div className={`flex h-full ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'}`}>
             <div className={`w-56 border-r p-6 space-y-3 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
               <div className="p-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-blue-600/20"><Folder size={14}/> Root Vault</div>
@@ -363,7 +449,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         </Window>
 
         {/* Terminal Window */}
-        <Window title="Virtual Terminal" icon={Terminal} isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} width="650px" height="420px" className="!top-[15%] !left-[20%]">
+        <Window title="Virtual Terminal" icon={Terminal} isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} width={650} height={420} defaultX={200} defaultY={100}>
           <div 
             className={`h-full p-6 overflow-y-auto font-mono text-sm leading-relaxed shadow-inner transition-colors duration-500 ${isDarkMode ? 'bg-black/60 text-emerald-400' : 'bg-[#1e293b] text-blue-400'}`}
             onClick={() => document.getElementById('linux-terminal-input')?.focus()}

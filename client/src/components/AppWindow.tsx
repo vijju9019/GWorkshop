@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Rnd } from 'react-rnd';
 import { X, Minus, Square, Maximize } from 'lucide-react';
 import type { WindowState } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AppWindowProps {
   window: WindowState;
@@ -53,10 +54,13 @@ const AppWindow: React.FC<AppWindowProps> = ({
       minHeight={200}
       dragHandleClassName="window-header"
       style={{ zIndex: window.zIndex }}
-      className="google-card overflow-hidden flex flex-col absolute"
+      className="overflow-visible flex flex-col absolute"
     >
-      <div 
+      <motion.div 
         ref={windowRef}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         className="w-full h-full flex flex-col bg-white rounded-google overflow-hidden border border-google-gray-300 shadow-2xl"
       >
         <div 
@@ -129,10 +133,10 @@ const AppWindow: React.FC<AppWindowProps> = ({
           </div>
         )}
 
-        <div className="flex-1 bg-white relative">
+        <div className={`flex-1 relative ${window.appId === 'linux' ? 'bg-[#0f172a]' : 'bg-white'}`}>
           {children}
         </div>
-      </div>
+      </motion.div>
     </Rnd>
   );
 };
