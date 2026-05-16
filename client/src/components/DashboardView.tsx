@@ -8,9 +8,10 @@ interface DashboardViewProps {
   isDarkMode?: boolean;
   user: any;
   onLaunch: (id: string) => void;
+  onDeploy: () => void;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ workspaces, storageUsed, isDarkMode, user, onLaunch }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ workspaces, storageUsed, isDarkMode, user, onLaunch, onDeploy }) => {
   const maxStorage = 500; // MB
   const storagePercentage = (storageUsed / maxStorage) * 100;
   const firstName = (user?.displayName || user?.email || 'Admin').split(' ')[0];
@@ -80,6 +81,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ workspaces, storageUsed, 
       <div className="flex items-center justify-between mb-8">
         <h2 className={`text-xs font-black uppercase tracking-[0.4em] ${isDarkMode ? 'text-white/20' : 'text-slate-400'}`}>Infrastructure Overview</h2>
         <div className={`h-[1px] flex-1 mx-8 ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`} />
+        <button 
+          onClick={onDeploy}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm ${isDarkMode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/10' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'}`}
+        >
+          Deploy New Cluster
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

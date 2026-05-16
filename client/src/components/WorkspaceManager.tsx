@@ -12,6 +12,8 @@ interface WorkspaceManagerProps {
   onDelete: (id: string) => void;
   onToggleStatus: (id: string) => void;
   isDarkMode?: boolean;
+  autoOpenCreateModal?: boolean;
+  setAutoOpenCreateModal?: (open: boolean) => void;
 }
 
 const getTemplateIcon = (template: string) => {
@@ -24,8 +26,15 @@ const getTemplateIcon = (template: string) => {
   }
 };
 
-const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({ workspaces, onCreate, onLaunch, onDelete, onToggleStatus, isDarkMode }) => {
-  const [showCreate, setShowCreate] = useState(false);
+const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({ workspaces, onCreate, onLaunch, onDelete, onToggleStatus, isDarkMode, autoOpenCreateModal, setAutoOpenCreateModal }) => {
+  const [showCreate, setShowCreate] = React.useState(false);
+
+  React.useEffect(() => {
+    if (autoOpenCreateModal) {
+      setShowCreate(true);
+      setAutoOpenCreateModal?.(false);
+    }
+  }, [autoOpenCreateModal, setAutoOpenCreateModal]);
   const [newName, setNewName] = useState('');
   const [template, setTemplate] = useState('Ubuntu Desktop');
 

@@ -26,13 +26,45 @@ interface LinuxDesktopProps {
   user: any;
   isDarkMode?: boolean;
   workspaceId?: string;
+  template?: string;
 }
 
 import { Rnd } from 'react-rnd';
 
-const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId }) => {
+const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, template = 'Ubuntu Desktop' }) => {
   const username = (user?.displayName || user?.email || 'user').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-  const terminalPrompt = `${username}@gworkspace`;
+  
+  const getOSDefaults = (t: string) => {
+    switch (t) {
+      case 'Windows 11 Light':
+        return {
+          prompt: `C:\\Users\\${username}>`,
+          welcome: `Microsoft Windows [Version 10.0.22621.1702]\n(c) Microsoft Corporation. All rights reserved.\n\nActive Node: ${workspaceId || 'Primary'}\nType "help" for a list of commands.`,
+          user: 'Administrator'
+        };
+      case 'ChromeOS Mini':
+        return {
+          prompt: `chronos@localhost / $`,
+          welcome: `Welcome to ChromeOS Mini v120.0.6099.235 (Official Build)\nHardware Sandbox Active.\n\ntype "help" for system instructions.`,
+          user: 'chronos'
+        };
+      case 'Cloud Debian':
+        return {
+          prompt: `root@debian:~#`,
+          welcome: `Debian GNU/Linux 12 (bookworm)\nLast login: ${new Date().toDateString()} from gworkspace-auth\n\nSecurity Cluster: ${workspaceId || 'Debian-Node'}`,
+          user: 'root'
+        };
+      default: // Ubuntu Desktop
+        return {
+          prompt: `${username}@gworkspace:~$`,
+          welcome: `Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.8.0-generic x86_64)\n\n * Documentation:  https://help.ubuntu.com\n * Management:     https://landscape.canonical.com\n\nSystem Load: 0.12 | Workspaces: 1 | Users: 1`,
+          user: username
+        };
+    }
+  };
+
+  const osDefaults = getOSDefaults(template);
+  const terminalPrompt = osDefaults.prompt;
   
   // App States
   const [terminalOpen, setTerminalOpen] = useState(false);
@@ -48,13 +80,9 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
   const [calcValue, setCalcValue] = useState('0');
 
   const [history, setHistory] = useState<string[]>([
-    'Welcome to GWorkspace Linux v2.4.0 LTS',
-    `Active Workspace: ${workspaceId || 'Default Node'}`,
-    '',
-    'type "help" for a list of available commands.'
+    osDefaults.welcome
   ]);
   const [input, setInput] = useState('');
-  const endRef = useRef<HTMLDivElement>(null);
 
   // Window Z-Index Management
   const [zIndices, setZIndices] = useState<Record<string, number>>({});
@@ -109,7 +137,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
     if (e.key === 'Enter') {
       const cmd = input.trim();
       const relativeCwd = cwd.replace(vRoot, '') || '/';
-      const newHistory = [...history, `${terminalPrompt}:${relativeCwd}$ ${cmd}`];
+      const newHistory = [...history, `${terminalPrompt} ${cmd}`];
       
       if (cmd === 'clear') {
         setHistory([]);
@@ -237,9 +265,13 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
     }
   };
 
+  const terminalBodyRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (terminalOpen) endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history, terminalOpen]);
+    if (terminalBodyRef.current) {
+      terminalBodyRef.current.scrollTop = terminalBodyRef.current.scrollHeight;
+    }
+  }, [history]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -451,15 +483,15 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         {/* Terminal Window */}
         <Window title="Virtual Terminal" icon={Terminal} isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} width={650} height={420} defaultX={200} defaultY={100}>
           <div 
+            ref={terminalBodyRef}
             className={`h-full p-6 overflow-y-auto font-mono text-sm leading-relaxed shadow-inner transition-colors duration-500 ${isDarkMode ? 'bg-black/60 text-emerald-400' : 'bg-[#1e293b] text-blue-400'}`}
             onClick={() => document.getElementById('linux-terminal-input')?.focus()}
           >
             {history.map((line, i) => <div key={i} className="whitespace-pre-wrap">{line}</div>)}
             <div className="flex items-start mt-2">
-              <span className={`mr-2 font-bold shrink-0 ${isDarkMode ? 'text-emerald-500' : 'text-emerald-400'}`}>{terminalPrompt}:~${' '}</span>
+              <span className={`mr-2 font-bold shrink-0 ${isDarkMode ? 'text-emerald-500' : 'text-emerald-400'}`}>{terminalPrompt}{' '}</span>
               <input id="linux-terminal-input" type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleCommand} className="flex-1 bg-transparent border-none outline-none text-white p-0 m-0" autoFocus autoComplete="off" spellCheck="false" />
             </div>
-            <div ref={endRef} />
           </div>
         </Window>
       </div>

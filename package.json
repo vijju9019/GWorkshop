@@ -1,5 +1,11 @@
 {
+  "name": "gworkshop-root",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\""
+  },
   "dependencies": {
+    "concurrently": "^8.2.2",
     "firebase": "^12.13.0"
   }
 }

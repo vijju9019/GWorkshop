@@ -100,9 +100,9 @@ const AppWindow: React.FC<AppWindowProps> = ({
             <button 
               onClick={() => onClose(window.id)}
               title="Close"
-              className="p-1 hover:bg-google-red hover:text-white rounded transition-colors text-google-gray-700 ml-1"
+              className="p-1.5 hover:bg-red-500 hover:text-white rounded-lg transition-all text-slate-500 ml-1 flex items-center justify-center group active:scale-90"
             >
-              <X size={16} />
+              <X size={18} strokeWidth={3} />
             </button>
           </div>
         </div>

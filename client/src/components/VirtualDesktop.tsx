@@ -58,8 +58,13 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   const [wallpaper, setWallpaper] = useState('/wallpaper.png');
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
 
-  // Removed auto-launch logic to ensure the user lands on a clean desktop
-  // Apps must now be opened manually via the launcher.
+  useEffect(() => {
+    // Auto-launch Linux OS on startup as requested
+    const linuxApp = GOOGLE_APPS.find(a => a.id === 'linux');
+    if (linuxApp) {
+      openApp(linuxApp);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -136,7 +141,7 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   };
 
   const renderWindowContent = (win: WindowState, appUrl?: string) => {
-    if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} />;
+    if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} template={workspace?.template} />;
     if (win.appId === 'settings') return (
       <SettingsApp wallpaper={wallpaper} onWallpaperChange={setWallpaper} />
     );
@@ -266,13 +271,23 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
           
           <div className="flex items-center gap-1 h-10 overflow-x-auto max-w-2xl">
             {windows.map(win => (
-              <button
+              <div
                 key={win.id}
-                onClick={() => win.isMinimized ? toggleMinimize(win.id) : focusWindow(win.id)}
-                className={`px-3 h-full rounded-lg flex items-center gap-2 transition-all border-b-2 text-sm ${win.isMinimized ? 'opacity-60 border-transparent bg-white/40' : (isDarkMode ? 'bg-white/10 border-blue-500 text-white' : 'bg-white/80 border-blue-500 shadow-sm')}`}
+                className="flex items-center"
               >
-                <span className="font-medium truncate max-w-[100px]">{win.title}</span>
-              </button>
+                <button
+                  onClick={() => win.isMinimized ? toggleMinimize(win.id) : focusWindow(win.id)}
+                  className={`px-3 h-10 rounded-l-lg flex items-center gap-2 transition-all border-b-2 text-sm ${win.isMinimized ? 'opacity-60 border-transparent bg-white/40' : (isDarkMode ? 'bg-white/10 border-blue-500 text-white' : 'bg-white/80 border-blue-500 shadow-sm')}`}
+                >
+                  <span className="font-medium truncate max-w-[100px]">{win.title}</span>
+                </button>
+                <button
+                  onClick={() => closeWindow(win.id)}
+                  className={`px-2 h-10 rounded-r-lg border-b-2 flex items-center justify-center transition-all hover:bg-red-500 hover:text-white ${win.isMinimized ? 'opacity-60 border-transparent bg-white/40' : (isDarkMode ? 'bg-white/10 border-blue-500 text-white/40' : 'bg-white/80 border-blue-500 text-slate-400')}`}
+                >
+                  <X size={14} />
+                </button>
+              </div>
             ))}
           </div>
         </div>

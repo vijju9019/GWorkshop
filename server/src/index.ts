@@ -16,6 +16,8 @@ const port = process.env.PORT || 3001;
 
 // WhatsApp Client Initialization
 let waClientReady = false;
+const disableWA = process.env.DISABLE_WHATSAPP === 'true';
+
 const waClient = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
@@ -24,19 +26,29 @@ const waClient = new Client({
   }
 });
 
-waClient.on('qr', (qr) => {
-  console.log('\n=========================================');
-  console.log('📱 SCAN THIS QR CODE WITH WHATSAPP TO LINK 📱');
-  console.log('=========================================');
-  qrcode.generate(qr, { small: true });
-});
+if (!disableWA) {
+  waClient.on('qr', (qr) => {
+    console.log('\n=========================================');
+    console.log('📱 SCAN THIS QR CODE WITH WHATSAPP TO LINK 📱');
+    console.log('=========================================');
+    qrcode.generate(qr, { small: true });
+  });
 
-waClient.on('ready', () => {
-  console.log('✅ WhatsApp Bot is linked and Ready! It will now send OTPs automatically.');
-  waClientReady = true;
-});
+  waClient.on('ready', () => {
+    console.log('✅ WhatsApp Bot is linked and Ready! It will now send OTPs automatically.');
+    waClientReady = true;
+  });
 
-waClient.initialize();
+  try {
+    waClient.initialize().catch(err => {
+      console.error('⚠️ WhatsApp Init Failed (Bypassing):', err.message);
+    });
+  } catch (err: any) {
+    console.error('⚠️ WhatsApp Startup Error:', err.message);
+  }
+} else {
+  console.log('ℹ️ WhatsApp Bot disabled via environment variable.');
+}
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '..', 'uploads');

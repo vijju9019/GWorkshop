@@ -1,0 +1,15 @@
+{
+  "name": "google-machine",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GWorkspace Enterprise - Orchestration Root",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run electron:dev --prefix client\"",
+    "client:dev": "npm run electron:dev --prefix client",
+    "server:dev": "npm run dev --prefix server",
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

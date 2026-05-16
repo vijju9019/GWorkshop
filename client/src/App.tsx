@@ -163,6 +163,13 @@ const App: React.FC = () => {
     }
   };
 
+  const [shouldOpenCreateModal, setShouldOpenCreateModal] = useState(false);
+
+  const handleDeploy = () => {
+    setActiveTab('workspaces');
+    setShouldOpenCreateModal(true);
+  };
+
   if (authLoading) {
     return (
       <div className={`h-screen w-screen flex flex-col items-center justify-center transition-colors duration-500 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-[#f8fafc]'}`}>
@@ -282,6 +289,7 @@ const App: React.FC = () => {
               isDarkMode={isDarkMode} 
               user={user}
               onLaunch={launchWorkspace}
+              onDeploy={handleDeploy}
             />
           )}
           {activeTab === 'workspaces' && (
@@ -292,6 +300,8 @@ const App: React.FC = () => {
               onDelete={deleteWorkspace}
               onToggleStatus={toggleWorkspaceStatus}
               isDarkMode={isDarkMode}
+              autoOpenCreateModal={shouldOpenCreateModal}
+              setAutoOpenCreateModal={setShouldOpenCreateModal}
             />
           )}
           {activeTab === 'storage' && <CloudStorage />}
