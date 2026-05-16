@@ -7,6 +7,9 @@ import {
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  signInAnonymously,
   type User 
 } from 'firebase/auth';
 
@@ -57,6 +60,9 @@ export {
   signOut, 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  signInAnonymously
 };
 export type { User };

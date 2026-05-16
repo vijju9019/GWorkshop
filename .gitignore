@@ -45,3 +45,7 @@ client/node_modules/
 client/dist/
 server/node_modules/
 server/dist/
+server/.wwebjs_auth/
+server/.wwebjs_cache/
+server/database.json
+server/uploads/

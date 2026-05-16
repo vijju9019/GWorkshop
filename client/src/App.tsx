@@ -31,45 +31,48 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  // Handle Workspace Persistence per User Account
-  useEffect(() => {
-    if (user) {
-      const saved = localStorage.getItem(`gw_workspaces_${user.uid}`);
-      if (saved) {
-        setWorkspaces(JSON.parse(saved));
-      } else {
-        const initial = [
-          {
-            id: '1',
+  // Handle Workspace Persistence via Backend API
+  const fetchWorkspaces = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`http://localhost:3001/api/workspaces/${user.uid}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length === 0) {
+          // Create initial workspace
+          const initialWs = {
             name: user.isGuest ? 'Guest Cluster Alpha' : 'Primary Dev Node',
-            status: 'running' as const,
+            template: 'Ubuntu Desktop',
             ramUsage: '2.4GB',
             storageUsage: '1.2GB',
-            lastActive: 'Just now',
-            template: 'Ubuntu Desktop'
+            status: 'running',
+            lastActive: 'Just now'
+          };
+          const createRes = await fetch(`http://localhost:3001/api/workspaces/${user.uid}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(initialWs)
+          });
+          if (createRes.ok) {
+            const newWs = await createRes.json();
+            setWorkspaces([newWs]);
           }
-        ];
-        setWorkspaces(initial);
-        localStorage.setItem(`gw_workspaces_${user.uid}`, JSON.stringify(initial));
+        } else {
+          setWorkspaces(data);
+        }
       }
+    } catch (err) {
+      console.error('Failed to fetch workspaces', err);
+    }
+  };
 
-      // Auto-launch for guests to "setup everything in one go"
-      if (user.isGuest) {
-        setTimeout(() => {
-          setIsDesktopMode(true);
-          setActiveWorkspaceId('1');
-        }, 1200);
-      }
+  useEffect(() => {
+    if (user) {
+      fetchWorkspaces();
     } else {
       setWorkspaces([]);
     }
   }, [user]);
-
-  useEffect(() => {
-    if (user && workspaces.length > 0) {
-      localStorage.setItem(`gw_workspaces_${user.uid}`, JSON.stringify(workspaces));
-    }
-  }, [workspaces, user]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -92,39 +95,70 @@ const App: React.FC = () => {
     }
   };
 
-  const createWorkspace = (name: string, template: string) => {
-    const newWs: Workspace = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      status: 'stopped',
-      ramUsage: '0GB',
-      storageUsage: '0MB',
-      lastActive: 'Provisioning...',
-      template
-    };
-    setWorkspaces(prev => [...prev, newWs]);
+  const createWorkspace = async (name: string, template: string) => {
+    if (!user) return;
+    try {
+      const res = await fetch(`http://localhost:3001/api/workspaces/${user.uid}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, template })
+      });
+      if (res.ok) {
+        const newWs = await res.json();
+        setWorkspaces(prev => [...prev, newWs]);
+      }
+    } catch (err) {
+      console.error('Failed to create workspace', err);
+    }
   };
 
-  const deleteWorkspace = (id: string) => {
+  const deleteWorkspace = async (id: string) => {
+    if (!user) return;
     setWorkspaces(prev => prev.filter(w => w.id !== id));
+    try {
+      await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete workspace', err);
+    }
   };
 
-  const toggleWorkspaceStatus = (id: string) => {
+  const toggleWorkspaceStatus = async (id: string) => {
+    if (!user) return;
+    let newStatus = 'stopped';
     setWorkspaces(prev => prev.map(w => {
       if (w.id === id) {
-        const newStatus = w.status === 'running' ? 'stopped' : 'running';
+        newStatus = w.status === 'running' ? 'stopped' : 'running';
         return { ...w, status: newStatus as any };
       }
       return w;
     }));
+    try {
+      await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch (err) {
+      console.error('Failed to update workspace status', err);
+    }
   };
 
-  const launchWorkspace = (id: string) => {
+  const launchWorkspace = async (id: string) => {
+    if (!user) return;
     setWorkspaces(prev => prev.map(w =>
       w.id === id ? { ...w, status: 'running' as const } : w
     ));
     setActiveWorkspaceId(id);
     setIsDesktopMode(true);
+    try {
+      await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'running' })
+      });
+    } catch (err) {
+      console.error('Failed to update workspace status', err);
+    }
   };
 
   if (authLoading) {
@@ -260,7 +294,7 @@ const App: React.FC = () => {
           )}
           {activeTab === 'storage' && <CloudStorage isDarkMode={isDarkMode} />}
           {activeTab === 'performance' && <PerformanceMonitor isDarkMode={isDarkMode} />}
-          {activeTab === 'settings' && <SettingsPage isDarkMode={isDarkMode} />}
+          {activeTab === 'settings' && <SettingsPage isDarkMode={isDarkMode} user={user} onUpdateUser={(data) => setUser((prev: any) => ({...prev, ...data}))} />}
           {activeTab === 'account' && (
             <div className="p-12 flex justify-center">
               <div className={`rounded-[40px] shadow-xl p-10 w-full max-w-md text-center border transition-all duration-500 ${isDarkMode ? 'bg-white/5 border-white/5 shadow-black/20' : 'bg-white border-slate-100'}`}>

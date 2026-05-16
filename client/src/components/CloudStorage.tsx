@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Cloud, 
   Search, 
@@ -24,17 +24,30 @@ interface FileItem {
 }
 
 const CloudStorage: React.FC = () => {
-  const [files, setFiles] = useState<FileItem[]>([
-    { id: '1', name: 'Project Proposals', type: 'folder', size: '--', modified: 'Oct 12, 2026' },
-    { id: '2', name: 'Design Assets', type: 'folder', size: '--', modified: 'Oct 14, 2026' },
-    { id: '3', name: 'System Logs.txt', type: 'document', size: '12 KB', modified: 'Just now' },
-    { id: '4', name: 'Workspace_Backup.iso', type: 'other', size: '85 MB', modified: 'Yesterday' },
-    { id: '5', name: 'Profile_Picture.png', type: 'image', size: '2.4 MB', modified: '2 days ago' },
-    { id: '6', name: 'Tutorial_Video.mp4', type: 'video', size: '18 MB', modified: '3 days ago' },
-  ]);
-
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchFiles = async () => {
+    try {
+      const res = await fetch('http://localhost:3001/api/storage/files');
+      if (res.ok) {
+        const data = await res.json();
+        setFiles(data);
+      }
+    } catch (err) {
+      console.error('Error fetching files:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
 
   const storageUsed = 120;
   const maxStorage = 500;
@@ -54,31 +67,53 @@ const CloudStorage: React.FC = () => {
     }
   };
 
-  const handleNewFolder = () => {
-    const newFolder: FileItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: `Untitled Folder ${files.filter(f => f.type === 'folder').length + 1}`,
-      type: 'folder',
-      size: '--',
-      modified: 'Just now'
-    };
-    setFiles([newFolder, ...files]);
+  const handleUploadFolderClick = () => {
+    folderInputRef.current?.click();
   };
 
-  const handleUpload = () => {
-    const newFile: FileItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: `Uploaded_File_${Math.floor(Math.random() * 1000)}.pdf`,
-      type: 'document',
-      size: '2.5 MB',
-      modified: 'Just now'
-    };
-    setFiles([newFile, ...files]);
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
-  const handleDelete = (id: string) => {
-    setFiles(files.filter(f => f.id !== id));
-    setActiveMenuId(null);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    setIsUploading(true);
+    
+    const formData = new FormData();
+    Array.from(e.target.files).forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      const res = await fetch('http://localhost:3001/api/storage/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        fetchFiles();
+      }
+    } catch (err) {
+      console.error('Error uploading files:', err);
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`http://localhost:3001/api/storage/files/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchFiles();
+      }
+    } catch (err) {
+      console.error('Error deleting file:', err);
+    } finally {
+      setActiveMenuId(null);
+    }
   };
 
   return (
@@ -90,19 +125,35 @@ const CloudStorage: React.FC = () => {
           <h1 className="text-xl font-medium text-google-gray-900">Cloud Storage</h1>
         </div>
         <div className="flex gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+            multiple 
+          />
+          <input 
+            type="file" 
+            ref={folderInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+            {...({ webkitdirectory: "true", directory: "true" } as any)} 
+          />
           <button 
-            onClick={handleNewFolder}
-            className="google-button google-button-secondary py-1.5 text-sm"
+            onClick={handleUploadFolderClick}
+            disabled={isUploading}
+            className="google-button google-button-secondary py-1.5 text-sm disabled:opacity-50"
           >
             <FolderPlus size={18} />
-            New Folder
+            Upload Folder
           </button>
           <button 
-            onClick={handleUpload}
-            className="google-button google-button-primary py-1.5 text-sm"
+            onClick={handleUploadClick}
+            disabled={isUploading}
+            className="google-button google-button-primary py-1.5 text-sm disabled:opacity-50"
           >
             <Upload size={18} />
-            Upload
+            {isUploading ? 'Uploading...' : 'Upload File'}
           </button>
         </div>
       </div>
@@ -154,9 +205,15 @@ const CloudStorage: React.FC = () => {
                     </button>
                     {activeMenuId === file.id && (
                       <div className="absolute right-0 top-10 w-36 bg-white rounded-lg shadow-xl border border-google-gray-200 py-1 z-10 animate-in fade-in zoom-in-95 duration-100">
-                        <button className="w-full text-left px-3 py-1.5 text-xs hover:bg-google-gray-100 flex items-center gap-2">
+                        <a 
+                          href={`http://localhost:3001/api/storage/download/${file.id}`} 
+                          download={file.name}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-google-gray-100 flex items-center gap-2"
+                        >
                           <Download size={14} /> Download
-                        </button>
+                        </a>
                         <button 
                           onClick={() => handleDelete(file.id)}
                           className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"

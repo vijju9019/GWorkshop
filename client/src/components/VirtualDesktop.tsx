@@ -21,6 +21,7 @@ import {
 import LinuxDesktop from './LinuxDesktop';
 import SettingsApp from './SettingsApp';
 import CloudStorage from './CloudStorage';
+import MockApp from './MockApp';
 
 const GOOGLE_APPS: AppConfig[] = [
   { id: 'docs', name: 'Google Docs', icon: 'https://www.google.com/s2/favicons?domain=docs.google.com&sz=128', url: 'https://docs.google.com/document/u/0/', type: 'google' },
@@ -40,6 +41,7 @@ const GOOGLE_APPS: AppConfig[] = [
   { id: 'earth', name: 'Google Earth', icon: 'https://www.google.com/s2/favicons?domain=earth.google.com&sz=128', url: 'https://earth.google.com/web/', type: 'google' },
   { id: 'contacts', name: 'Google Contacts', icon: 'https://www.google.com/s2/favicons?domain=contacts.google.com&sz=128', url: 'https://contacts.google.com', type: 'google' },
   { id: 'linux', name: 'Linux OS', icon: 'https://www.google.com/s2/favicons?domain=ubuntu.com&sz=128', url: 'local:linux', type: 'system' },
+  { id: 'vscode', name: 'VS Code', icon: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Visual_Studio_Code_1.35_icon.svg', url: 'https://stackblitz.com/edit/node-js-sandbox?embed=1&theme=dark', type: 'system' },
   { id: 'settings', name: 'Settings', icon: 'https://www.gstatic.com/images/icons/material/system/2x/settings_grey600_48dp.png', url: 'local:settings', type: 'system' },
 ];
 
@@ -156,6 +158,11 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
       <SettingsApp wallpaper={wallpaper} onWallpaperChange={setWallpaper} />
     );
     if (win.appId === 'drive') return <CloudStorage />;
+    if (win.appId === 'docs' || win.appId === 'gmail' || win.appId === 'chrome') return <MockApp appId={win.appId} />;
+    
+    if (win.appId === 'vscode') return (
+      <iframe src={appUrl} className="w-full h-full border-none bg-[#1e1e1e]" title={win.title} allow="cross-origin-isolated" />
+    );
     
     // Unique partition per workspace to keep sessions isolated and working in every workspace
     const partition = `persist:user-${user.uid}-ws-${workspace?.id || 'default'}`;
@@ -186,7 +193,7 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
       >
         {/* Desktop Icons - Consistent across all workspaces as requested */}
         <div className="absolute top-8 left-8 flex flex-col gap-6">
-          {GOOGLE_APPS.filter(app => ['linux', 'drive', 'gmail', 'chrome', 'docs'].includes(app.id)).map(app => (
+          {GOOGLE_APPS.filter(app => ['vscode', 'linux', 'drive', 'gmail', 'chrome', 'docs'].includes(app.id)).map(app => (
             <div 
               key={app.id} 
               onDoubleClick={() => openApp(app)}

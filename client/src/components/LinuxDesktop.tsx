@@ -277,7 +277,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
 
         {/* VS Code Window */}
         <Window title="Visual Studio Code" icon={Code} isOpen={vscodeOpen} onClose={() => setVscodeOpen(false)} width="1100px" height="700px">
-          <webview src="https://vscode.dev" className="w-full h-full border-none" />
+          <iframe src="https://stackblitz.com/edit/node-js-sandbox?embed=1&theme=dark" className="w-full h-full border-none bg-[#1e1e1e]" title="VS Code" allow="cross-origin-isolated" />
         </Window>
 
         {/* Calculator Window */}
@@ -342,10 +342,10 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               <input 
                 className={`flex-1 px-5 py-2 rounded-xl text-xs outline-none focus:ring-4 transition-all font-bold ${isDarkMode ? 'bg-white/5 border border-white/10 text-white focus:ring-blue-500/10' : 'bg-white border border-slate-200 text-slate-700 focus:ring-blue-500/5 focus:border-blue-500/30'}`}
                 defaultValue={firefoxUrl}
-                onKeyDown={e => { if (e.key === 'Enter') setFirefoxUrl(e.currentTarget.value.includes('http') ? e.currentTarget.value : `https://www.google.com/search?igu=1&q=${e.currentTarget.value}`); }}
+                onKeyDown={e => { if (e.key === 'Enter') setFirefoxUrl(e.currentTarget.value.includes('http') ? e.currentTarget.value : `https://www.bing.com/search?q=${e.currentTarget.value}`); }}
               />
             </div>
-            <webview src={firefoxUrl} className="flex-1 bg-white" />
+            <iframe src={firefoxUrl} className="flex-1 bg-white border-none w-full" title="Firefox" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />
           </div>
         </Window>
 
