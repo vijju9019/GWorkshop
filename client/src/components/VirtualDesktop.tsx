@@ -22,6 +22,7 @@ import LinuxDesktop from './LinuxDesktop';
 import SettingsApp from './SettingsApp';
 import CloudStorage from './CloudStorage';
 import MockApp from './MockApp';
+import { Rnd } from 'react-rnd';
 
 const GOOGLE_APPS: AppConfig[] = [
   { id: 'docs', name: 'Google Docs', icon: 'https://www.google.com/s2/favicons?domain=docs.google.com&sz=128', url: 'https://docs.google.com/document/u/0/', type: 'google' },
@@ -55,8 +56,11 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [launcherOpen, setLauncherOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [wallpaper, setWallpaper] = useState('/wallpaper.png');
+  const [wallpaper, setWallpaper] = useState('/luffy_gear5.png');
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
+
+  // Sticker State
+  const [stickerPos, setStickerPos] = useState({ x: window.innerWidth - 350, y: 50 });
 
   useEffect(() => {
     // Auto-launch Linux OS on startup as requested
@@ -179,6 +183,29 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
           setQuickSettingsOpen(false);
         }}
       >
+        {/* Movable Luffy Sticker */}
+        <Rnd
+          default={{
+            x: stickerPos.x,
+            y: stickerPos.y,
+            width: 300,
+            height: 300,
+          }}
+          bounds="parent"
+          className="z-0 pointer-events-auto"
+        >
+          <div className="w-full h-full group relative">
+             <img 
+               src="/luffy_gear5.png" 
+               className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.3)] filter brightness-110 contrast-110 animate-pulse-slow cursor-grab active:cursor-grabbing"
+               alt="Gear 5 Luffy" 
+             />
+             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-[10px] font-black uppercase tracking-widest text-white">
+               Warrior of Liberation
+             </div>
+          </div>
+        </Rnd>
+
         {/* Desktop Icons - Consistent across all workspaces as requested */}
         <div className="absolute top-8 left-8 flex flex-col gap-6">
           {GOOGLE_APPS.filter(app => ['vscode', 'linux', 'drive', 'gmail', 'chrome', 'docs'].includes(app.id)).map(app => (
