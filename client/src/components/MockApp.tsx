@@ -190,6 +190,8 @@ const MockApp: React.FC<MockAppProps> = ({ appId }) => {
     );
   }
 
+  const [browserUrl, setBrowserUrl] = React.useState('https://www.google.com/search?igu=1');
+
   if (appId === 'chrome') {
     return (
       <div className="flex flex-col h-full bg-white font-sans">
@@ -203,12 +205,27 @@ const MockApp: React.FC<MockAppProps> = ({ appId }) => {
           </div>
           <div className="flex-1 flex items-center bg-white rounded-full px-4 py-1.5 shadow-sm border border-gray-200">
             <Lock size={14} className="text-gray-500 mr-3" />
-            <input type="text" defaultValue="https://www.bing.com" className="flex-1 outline-none text-sm text-gray-800" />
+            <input 
+              type="text" 
+              defaultValue={browserUrl} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = e.currentTarget.value;
+                  setBrowserUrl(val.includes('://') ? val : `https://www.google.com/search?q=${val}`);
+                }
+              }}
+              className="flex-1 outline-none text-sm text-gray-800" 
+            />
             <Star size={16} className="text-gray-400 hover:text-gray-600 cursor-pointer" />
           </div>
         </div>
         {/* Content */}
-        <iframe src="https://www.bing.com" className="flex-1 w-full border-none" title="Chrome Browser" />
+        <webview 
+          src={browserUrl} 
+          className="flex-1 w-full border-none bg-white" 
+          title="Chrome Browser" 
+          allowpopups="true"
+        />
       </div>
     );
   }

@@ -153,7 +153,12 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
     if (win.appId === 'docs' || win.appId === 'gmail' || win.appId === 'chrome') return <MockApp appId={win.appId} />;
     
     if (win.appId === 'vscode') return (
-      <iframe src={appUrl} className="w-full h-full border-none bg-[#1e1e1e]" title={win.title} allow="cross-origin-isolated" />
+      <webview 
+        src={appUrl} 
+        className="w-full h-full border-none bg-[#1e1e1e]" 
+        title={win.title} 
+        partition={partition}
+      />
     );
     
     // Unique partition per workspace to keep sessions isolated and working in every workspace

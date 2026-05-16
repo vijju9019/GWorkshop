@@ -430,7 +430,12 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
                 onKeyDown={e => { if (e.key === 'Enter') setFirefoxUrl(e.currentTarget.value.includes('http') ? e.currentTarget.value : `https://www.bing.com/search?q=${e.currentTarget.value}`); }}
               />
             </div>
-            <iframe src={firefoxUrl} className="flex-1 bg-white border-none w-full" title="Firefox" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />
+            <webview 
+              src={firefoxUrl} 
+              className="flex-1 bg-white border-none w-full" 
+              title="Firefox"
+              allowpopups="true"
+            />
           </div>
         </InternalWindow>
 
