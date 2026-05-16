@@ -145,7 +145,7 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   };
 
   const renderWindowContent = (win: WindowState, appUrl?: string) => {
-    if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} template={workspace?.template} />;
+    if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} template={workspace?.template} wallpaper={wallpaper} />;
     if (win.appId === 'settings') return (
       <SettingsApp wallpaper={wallpaper} onWallpaperChange={setWallpaper} />
     );

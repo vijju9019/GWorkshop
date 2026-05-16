@@ -27,11 +27,12 @@ interface LinuxDesktopProps {
   isDarkMode?: boolean;
   workspaceId?: string;
   template?: string;
+  wallpaper?: string;
 }
 
 import { Rnd } from 'react-rnd';
 
-const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, template = 'Ubuntu Desktop' }) => {
+const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, template = 'Ubuntu Desktop', wallpaper = '/luffy_gear5.png' }) => {
   const username = (user?.displayName || user?.email || 'user').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   
   const getOSDefaults = (t: string) => {
@@ -331,13 +332,12 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
   };
 
   return (
-    <div className={`w-full h-full flex flex-col overflow-hidden relative font-sans select-none transition-colors duration-700 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-[#f1f5f9]'}`}>
-      {/* Background Layer */}
-      {isDarkMode ? (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1e293b,transparent)] opacity-40" />
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-100 opacity-60" />
-      )}
+    <div 
+      className={`w-full h-full flex flex-col overflow-hidden relative font-sans select-none transition-all duration-700 bg-cover bg-center`}
+      style={{ backgroundImage: `url('${wallpaper}')` }}
+    >
+      {/* Background Overlay */}
+      <div className={`absolute inset-0 ${isDarkMode ? 'bg-slate-950/40' : 'bg-white/10'} backdrop-blur-[2px]`} />
 
       {/* Top Panel */}
       <div className={`h-8 border-b flex items-center justify-between px-4 text-[11px] font-black uppercase tracking-widest z-50 transition-all duration-500 ${isDarkMode ? 'bg-black/40 backdrop-blur-xl border-white/5 text-white' : 'bg-white/90 backdrop-blur-md border-slate-200 text-slate-800'}`}>
