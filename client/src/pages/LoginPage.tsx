@@ -12,9 +12,10 @@ import { Mail, Phone, Lock, Hash, ArrowRight, User, ShieldAlert } from 'lucide-r
 
 interface LoginPageProps {
   onLogin: (user: any) => void;
+  isDarkMode?: boolean;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode }) => {
   const [loginType, setLoginType] = useState<'email' | 'phone'>('email');
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');

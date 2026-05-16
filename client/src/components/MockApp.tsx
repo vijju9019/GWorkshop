@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   FileText, 
   Menu, 
-  Share, 
   MessageSquare, 
   Video, 
   Bold, 

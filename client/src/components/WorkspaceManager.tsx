@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Plus, Monitor, Pause, Play, Trash2, Clock, Cpu, HardDrive, Settings, X,
-  Terminal, Globe, Shield, Layout, ArrowRight, Check
+  Terminal, Globe, Shield, Layout, ArrowRight
 } from 'lucide-react';
 import type { Workspace } from '../types';
 

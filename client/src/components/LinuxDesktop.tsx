@@ -10,10 +10,7 @@ import {
   Settings as SettingsIcon,
   Maximize2,
   Minimize2,
-  ChevronRight,
   ShieldCheck,
-  Cpu,
-  Monitor,
   Maximize
 } from 'lucide-react';
 
@@ -157,7 +154,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               break;
             }
             default:
-              exec(cmd, { cwd }, (error: any, stdout: string, stderr: string) => {
+              exec(cmd, { cwd }, (_error: any, stdout: string, stderr: string) => {
                 if (stdout) setHistory(prev => [...prev, ...stdout.trim().split('\n')]);
                 if (stderr) setHistory(prev => [...prev, ...stderr.trim().split('\n')]);
               });

@@ -9,7 +9,7 @@ import PerformanceMonitor from './components/PerformanceMonitor';
 import SettingsPage from './pages/SettingsPage';
 import type { Workspace } from './types';
 import { auth, signOut, onAuthStateChanged, type User } from './services/firebase';
-import { Sun, Moon, Grid, Layout, Cpu, Globe, MessageSquare, Terminal, Maximize } from 'lucide-react';
+import { Sun, Moon, Layout, Cpu, Globe, MessageSquare, Terminal, Maximize } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -292,8 +292,8 @@ const App: React.FC = () => {
               isDarkMode={isDarkMode}
             />
           )}
-          {activeTab === 'storage' && <CloudStorage isDarkMode={isDarkMode} />}
-          {activeTab === 'performance' && <PerformanceMonitor isDarkMode={isDarkMode} />}
+          {activeTab === 'storage' && <CloudStorage />}
+          {activeTab === 'performance' && <PerformanceMonitor />}
           {activeTab === 'settings' && <SettingsPage isDarkMode={isDarkMode} user={user} onUpdateUser={(data) => setUser((prev: any) => ({...prev, ...data}))} />}
           {activeTab === 'account' && (
             <div className="p-12 flex justify-center">
