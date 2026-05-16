@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Maximize
 } from 'lucide-react';
+import { Rnd } from 'react-rnd';
 
 declare global {
   namespace JSX {
@@ -30,7 +31,54 @@ interface LinuxDesktopProps {
   wallpaper?: string;
 }
 
-import { Rnd } from 'react-rnd';
+const InternalWindow = ({ title, icon: Icon, isOpen, onClose, children, className = "", width = 800, height = 500, defaultX = 150, defaultY = 100, isDarkMode, zIndices, bringToFront, maximizedApps, setMaximizedApps }: any) => {
+  if (!isOpen) return null;
+  const isMax = maximizedApps[title] || false;
+  const toggleMax = () => setMaximizedApps((prev: any) => ({ ...prev, [title]: !isMax }));
+  
+  const isTerminal = title.toLowerCase().includes('terminal');
+  const winBg = isTerminal ? 'bg-[#0f172a]' : (isDarkMode ? 'bg-[#1e293b]' : 'bg-white');
+  const borderColor = isTerminal ? 'border-white/10' : (isDarkMode ? 'border-white/5' : 'border-slate-200');
+
+  return (
+    <Rnd
+      default={{ x: defaultX, y: defaultY, width, height }}
+      size={isMax ? { width: '100%', height: '100%' } : undefined}
+      position={isMax ? { x: 0, y: 0 } : undefined}
+      disableDragging={isMax}
+      enableResizing={!isMax}
+      bounds="parent"
+      dragHandleClassName="internal-window-header"
+      onDragStart={() => bringToFront(title)}
+      style={{ zIndex: zIndices[title] || 30 }}
+    >
+      <div 
+        className={`w-full h-full shadow-2xl flex flex-col overflow-hidden border animate-in zoom-in-95 duration-200 ${className} ${winBg} ${borderColor} ${isMax ? 'rounded-none' : 'rounded-2xl'}`}
+      >
+        <div className={`internal-window-header h-11 flex items-center justify-between px-4 select-none border-b shrink-0 cursor-grab active:cursor-grabbing ${isTerminal ? 'bg-black/40 border-white/10' : (isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200')}`}>
+          <div className="flex items-center gap-2 pointer-events-none">
+            <Icon size={16} className={isTerminal || isDarkMode ? 'text-white/40' : 'text-slate-500'} />
+            <span className={`text-[11px] font-black uppercase tracking-widest ${isTerminal || isDarkMode ? 'text-white' : 'text-slate-800'}`}>{title}</span>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={(e) => { e.stopPropagation(); toggleMax(); }}
+              title={isMax ? "Restore" : "Full Screen"}
+              className={`w-3 h-3 rounded-full transition-colors flex items-center justify-center group ${isTerminal || isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}
+            >
+              {isMax ? <Minimize2 size={8} className="text-blue-500" /> : <Maximize2 size={8} className="opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />}
+            </button>
+            <button className={`w-3 h-3 rounded-full transition-colors ${isTerminal || isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}></button>
+            <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="w-3 h-3 rounded-full bg-red-500/20 hover:bg-red-500 text-red-500 flex items-center justify-center transition-colors group">
+              <X size={8} strokeWidth={4} className="opacity-0 group-hover:opacity-100 text-white transition-opacity" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-hidden" onMouseDown={() => bringToFront(title)}>{children}</div>
+      </div>
+    </Rnd>
+  );
+};
 
 const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, template = 'Ubuntu Desktop', wallpaper = '/luffy_gear5.png' }) => {
   const username = (user?.displayName || user?.email || 'user').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -282,58 +330,11 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
     }
   };
 
-  const Window = ({ title, icon: Icon, isOpen, onClose, children, className = "", width = 800, height = 500, defaultX = 150, defaultY = 100 }: any) => {
-    if (!isOpen) return null;
-    const isMax = maximizedApps[title] || false;
-    const toggleMax = () => setMaximizedApps(prev => ({ ...prev, [title]: !isMax }));
-    
-    const isTerminal = title.toLowerCase().includes('terminal');
-    const winBg = isTerminal ? 'bg-[#0f172a]' : (isDarkMode ? 'bg-[#1e293b]' : 'bg-white');
-    const borderColor = isTerminal ? 'border-white/10' : (isDarkMode ? 'border-white/5' : 'border-slate-200');
-
-    return (
-      <Rnd
-        default={{ x: defaultX, y: defaultY, width, height }}
-        size={isMax ? { width: '100%', height: '100%' } : undefined}
-        position={isMax ? { x: 0, y: 0 } : undefined}
-        disableDragging={isMax}
-        enableResizing={!isMax}
-        bounds="parent"
-        dragHandleClassName="internal-window-header"
-        onDragStart={() => bringToFront(title)}
-        style={{ zIndex: zIndices[title] || 30 }}
-      >
-        <div 
-          className={`w-full h-full shadow-2xl flex flex-col overflow-hidden border animate-in zoom-in-95 duration-200 ${className} ${winBg} ${borderColor} ${isMax ? 'rounded-none' : 'rounded-2xl'}`}
-        >
-          <div className={`internal-window-header h-11 flex items-center justify-between px-4 select-none border-b shrink-0 cursor-grab active:cursor-grabbing ${isTerminal ? 'bg-black/40 border-white/10' : (isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200')}`}>
-            <div className="flex items-center gap-2 pointer-events-none">
-              <Icon size={16} className={isTerminal || isDarkMode ? 'text-white/40' : 'text-slate-500'} />
-              <span className={`text-[11px] font-black uppercase tracking-widest ${isTerminal || isDarkMode ? 'text-white' : 'text-slate-800'}`}>{title}</span>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={(e) => { e.stopPropagation(); toggleMax(); }}
-                title={isMax ? "Restore" : "Full Screen"}
-                className={`w-3 h-3 rounded-full transition-colors flex items-center justify-center group ${isTerminal || isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}
-              >
-                {isMax ? <Minimize2 size={8} className="text-blue-500" /> : <Maximize2 size={8} className="opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />}
-              </button>
-              <button className={`w-3 h-3 rounded-full transition-colors ${isTerminal || isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'}`}></button>
-              <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="w-3 h-3 rounded-full bg-red-500/20 hover:bg-red-500 text-red-500 flex items-center justify-center transition-colors group">
-                <X size={8} strokeWidth={4} className="opacity-0 group-hover:opacity-100 text-white transition-opacity" />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-hidden" onMouseDown={() => bringToFront(title)}>{children}</div>
-        </div>
-      </Rnd>
-    );
-  };
+  const commonProps = { isDarkMode, zIndices, bringToFront, maximizedApps, setMaximizedApps };
 
   return (
     <div 
-      className={`w-full h-full flex flex-col overflow-hidden relative font-sans select-none transition-all duration-700 bg-cover bg-center`}
+      className={`w-full h-full flex flex-col overflow-hidden relative font-sans select-none bg-cover bg-center transition-opacity duration-700`}
       style={{ backgroundImage: `url('${wallpaper}')` }}
     >
       {/* Background Overlay */}
@@ -370,12 +371,12 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
       {/* Desktop Area */}
       <div className="flex-1 relative p-8 flex gap-8 flex-col flex-wrap content-start z-10">
         {[
-          { id: 'terminal', name: 'Terminal', icon: Terminal, color: isDarkMode ? 'bg-slate-800' : 'bg-slate-900', action: () => setTerminalOpen(true) },
-          { id: 'files', name: 'Workspace', icon: Folder, color: 'bg-blue-600', action: () => setHomeOpen(true) },
-          { id: 'firefox', name: 'Firefox', icon: Globe, color: 'bg-sky-500', action: () => setFirefoxOpen(true) },
-          { id: 'vscode', name: 'VS Code', icon: Code, color: 'bg-indigo-600', action: () => setVscodeOpen(true) },
-          { id: 'calc', name: 'Calculator', icon: CalcIcon, color: 'bg-emerald-500', action: () => setCalcOpen(true) },
-          { id: 'monitor', name: 'Monitor', icon: Activity, color: 'bg-rose-500', action: () => setMonitorOpen(true) },
+          { id: 'terminal', name: 'Terminal', icon: Terminal, color: isDarkMode ? 'bg-slate-800' : 'bg-slate-900', action: () => { setTerminalOpen(true); bringToFront('Virtual Terminal'); } },
+          { id: 'files', name: 'Workspace', icon: Folder, color: 'bg-blue-600', action: () => { setHomeOpen(true); bringToFront('File Infrastructure'); } },
+          { id: 'firefox', name: 'Firefox', icon: Globe, color: 'bg-sky-500', action: () => { setFirefoxOpen(true); bringToFront('Firefox Browser'); } },
+          { id: 'vscode', name: 'VS Code', icon: Code, color: 'bg-indigo-600', action: () => { setVscodeOpen(true); bringToFront('Visual Studio Code'); } },
+          { id: 'calc', name: 'Calculator', icon: CalcIcon, color: 'bg-emerald-500', action: () => { setCalcOpen(true); bringToFront('Calculator'); } },
+          { id: 'monitor', name: 'Monitor', icon: Activity, color: 'bg-rose-500', action: () => { setMonitorOpen(true); bringToFront('Cluster Monitor'); } },
         ].map(app => (
           <div 
             key={app.id}
@@ -390,13 +391,12 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
           </div>
         ))}
 
-        {/* VS Code Window */}
-        <Window title="Visual Studio Code" icon={Code} isOpen={vscodeOpen} onClose={() => setVscodeOpen(false)} width={1000} height={650}>
+        {/* Internal Windows */}
+        <InternalWindow title="Visual Studio Code" icon={Code} isOpen={vscodeOpen} onClose={() => setVscodeOpen(false)} width={1000} height={650} {...commonProps}>
           <webview src="https://vscode.dev" className="w-full h-full border-none" />
-        </Window>
+        </InternalWindow>
 
-        {/* Calculator Window */}
-        <Window title="Calculator" icon={CalcIcon} isOpen={calcOpen} onClose={() => setCalcOpen(false)} width={300} height={420} defaultX={400} defaultY={150}>
+        <InternalWindow title="Calculator" icon={CalcIcon} isOpen={calcOpen} onClose={() => setCalcOpen(false)} width={300} height={420} defaultX={400} defaultY={150} {...commonProps}>
           <div className={`p-6 h-full flex flex-col gap-4 ${isDarkMode ? 'bg-[#1e293b]' : 'bg-slate-50'}`}>
             <div className={`p-5 rounded-2xl text-right text-3xl font-black shadow-sm border transition-colors ${isDarkMode ? 'bg-white/5 border-white/5 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
               {calcValue}
@@ -420,10 +420,9 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               ))}
             </div>
           </div>
-        </Window>
+        </InternalWindow>
 
-        {/* System Monitor Window */}
-        <Window title="Cluster Monitor" icon={Activity} isOpen={monitorOpen} onClose={() => setMonitorOpen(false)} width={600} height={450} defaultX={300} defaultY={100}>
+        <InternalWindow title="Cluster Monitor" icon={Activity} isOpen={monitorOpen} onClose={() => setMonitorOpen(false)} width={600} height={450} defaultX={300} defaultY={100} {...commonProps}>
           <div className="p-8 space-y-8">
             <div className="space-y-3">
               <div className={`flex justify-between text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white/20' : 'text-slate-400'}`}><span>CPU Payload</span><span>12%</span></div>
@@ -448,10 +447,9 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               </table>
             </div>
           </div>
-        </Window>
+        </InternalWindow>
 
-        {/* Firefox Window */}
-        <Window title="Firefox Browser" icon={Globe} isOpen={firefoxOpen} onClose={() => setFirefoxOpen(false)} width={900} height={600} defaultX={100} defaultY={50}>
+        <InternalWindow title="Firefox Browser" icon={Globe} isOpen={firefoxOpen} onClose={() => setFirefoxOpen(false)} width={900} height={600} defaultX={100} defaultY={50} {...commonProps}>
           <div className="flex flex-col h-full bg-white">
             <div className={`p-3 flex gap-3 border-b ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
               <input 
@@ -462,10 +460,9 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
             </div>
             <iframe src={firefoxUrl} className="flex-1 bg-white border-none w-full" title="Firefox" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />
           </div>
-        </Window>
+        </InternalWindow>
 
-        {/* Workspace Root Window */}
-        <Window title="File Infrastructure" icon={Folder} isOpen={homeOpen} onClose={() => setHomeOpen(false)} width={700} height={450} defaultX={250} defaultY={150}>
+        <InternalWindow title="File Infrastructure" icon={Folder} isOpen={homeOpen} onClose={() => setHomeOpen(false)} width={700} height={450} defaultX={250} defaultY={150} {...commonProps}>
           <div className={`flex h-full ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'}`}>
             <div className={`w-56 border-r p-6 space-y-3 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
               <div className="p-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-blue-600/20"><Folder size={14}/> Root Vault</div>
@@ -478,10 +475,9 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-white/20' : 'text-slate-300'}`}>Hardware Sandbox Active</p>
             </div>
           </div>
-        </Window>
+        </InternalWindow>
 
-        {/* Terminal Window */}
-        <Window title="Virtual Terminal" icon={Terminal} isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} width={650} height={420} defaultX={200} defaultY={100}>
+        <InternalWindow title="Virtual Terminal" icon={Terminal} isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} width={650} height={420} defaultX={200} defaultY={100} {...commonProps}>
           <div 
             ref={terminalBodyRef}
             className={`h-full p-6 overflow-y-auto font-mono text-sm leading-relaxed shadow-inner transition-colors duration-500 ${isDarkMode ? 'bg-black/60 text-emerald-400' : 'bg-[#1e293b] text-blue-400'}`}
@@ -493,7 +489,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               <input id="linux-terminal-input" type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleCommand} className="flex-1 bg-transparent border-none outline-none text-white p-0 m-0" autoFocus autoComplete="off" spellCheck="false" />
             </div>
           </div>
-        </Window>
+        </InternalWindow>
       </div>
     </div>
   );
