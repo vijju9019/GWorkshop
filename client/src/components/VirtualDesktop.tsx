@@ -16,7 +16,11 @@ import {
   Battery, 
   Volume2,
   LayoutGrid,
-  Settings
+  Settings,
+  X,
+  Folder,
+  FileText,
+  ShieldCheck
 } from 'lucide-react';
 import LinuxDesktop from './LinuxDesktop';
 import SettingsApp from './SettingsApp';
@@ -59,17 +63,32 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   const [wallpaper, setWallpaper] = useState('/luffy_gear5.png');
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
 
-  // Sticker State
-  const [stickerPos, setStickerPos] = useState({ x: window.innerWidth - 350, y: 50 });
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [connectionProgress, setConnectionProgress] = useState(0);
 
   useEffect(() => {
+    // Simulate server connection boot sequence
+    setIsConnecting(true);
+    setConnectionProgress(0);
+    const interval = setInterval(() => {
+      setConnectionProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => setIsConnecting(false), 500);
+          return 100;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+
     // Auto-launch Linux OS on startup as requested
     const linuxApp = GOOGLE_APPS.find(a => a.id === 'linux');
     if (linuxApp) {
       openApp(linuxApp);
     }
-  }, []);
-
+    
+    return () => clearInterval(interval);
+  }, [workspace?.id]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -145,6 +164,9 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   };
 
   const renderWindowContent = (win: WindowState, appUrl?: string) => {
+    // Unique partition per workspace to keep sessions isolated and working in every workspace
+    const partition = `persist:user-${user.uid}-ws-${workspace?.id || 'default'}`;
+
     if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} template={workspace?.template} wallpaper={wallpaper} />;
     if (win.appId === 'settings') return (
       <SettingsApp wallpaper={wallpaper} onWallpaperChange={setWallpaper} />
@@ -160,9 +182,6 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
         partition={partition}
       />
     );
-    
-    // Unique partition per workspace to keep sessions isolated and working in every workspace
-    const partition = `persist:user-${user.uid}-ws-${workspace?.id || 'default'}`;
     
     return (
       <webview 
@@ -180,6 +199,41 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
       className="relative w-full h-screen overflow-hidden flex flex-col transition-all duration-700"
       style={{ backgroundImage: `url('${wallpaper}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
+      {/* Connection Overlay */}
+      {isConnecting && (
+        <div className="absolute inset-0 z-[20000] bg-slate-950 flex flex-col items-center justify-center animate-in fade-in duration-500">
+          <div className="relative w-24 h-24 mb-10">
+            <div className="absolute inset-0 rounded-[32px] bg-blue-600 animate-ping opacity-20"></div>
+            <div className="absolute inset-0 rounded-[32px] bg-blue-600 shadow-2xl flex items-center justify-center">
+               <span className="text-white font-black text-4xl">G</span>
+            </div>
+          </div>
+          
+          <div className="text-center space-y-2 mb-12">
+            <h2 className="text-white text-xl font-black tracking-tight uppercase">Connecting to Secure Node</h2>
+            <p className="text-blue-400 text-[10px] font-black tracking-[0.4em] uppercase opacity-60">Handshaking with {workspace?.template || 'Compute Instance'}</p>
+          </div>
+
+          <div className="w-64 space-y-4">
+            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-300 ease-out shadow-[0_0_15px_rgba(37,99,235,0.8)]"
+                style={{ width: `${connectionProgress}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-white/20">
+              <span>Initializing Protocol</span>
+              <span>{Math.round(connectionProgress)}%</span>
+            </div>
+          </div>
+
+          <div className="absolute bottom-12 flex items-center gap-3 opacity-20">
+            <div className="w-1 h-1 rounded-full bg-white animate-pulse"></div>
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white">Quantum Encryption Active</span>
+          </div>
+        </div>
+      )}
+
       {/* Desktop Area */}
       <div 
         className="flex-1 relative p-4"
@@ -188,29 +242,6 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
           setQuickSettingsOpen(false);
         }}
       >
-        {/* Movable Luffy Sticker */}
-        <Rnd
-          default={{
-            x: stickerPos.x,
-            y: stickerPos.y,
-            width: 300,
-            height: 300,
-          }}
-          bounds="parent"
-          className="z-0 pointer-events-auto"
-        >
-          <div className="w-full h-full group relative">
-             <img 
-               src="/luffy_gear5.png" 
-               className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.3)] filter brightness-110 contrast-110 animate-pulse-slow cursor-grab active:cursor-grabbing"
-               alt="Gear 5 Luffy" 
-             />
-             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-[10px] font-black uppercase tracking-widest text-white">
-               Warrior of Liberation
-             </div>
-          </div>
-        </Rnd>
-
         {/* Desktop Icons - Consistent across all workspaces as requested */}
         <div className="absolute top-8 left-8 flex flex-col gap-6">
           {GOOGLE_APPS.filter(app => ['vscode', 'linux', 'drive', 'gmail', 'chrome', 'docs'].includes(app.id)).map(app => (

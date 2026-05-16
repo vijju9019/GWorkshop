@@ -214,7 +214,7 @@ const App: React.FC = () => {
               onClick={() => setIsDesktopMode(false)}
               className="hover:text-red-500 transition-colors flex items-center gap-2 group"
             >
-              Terminate Session <LogOut size={12} className="group-hover:translate-x-1 transition-transform" />
+              Logout <LogOut size={12} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>
@@ -330,7 +330,7 @@ const App: React.FC = () => {
                   onClick={handleLogout}
                   className={`mt-10 w-full py-4 rounded-2xl font-black transition-all text-sm uppercase tracking-widest active:scale-[0.98] ${isDarkMode ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
                 >
-                  Terminate Authority
+                  Logout
                 </button>
               </div>
             </div>

@@ -11,7 +11,8 @@ import {
   Maximize2,
   Minimize2,
   ShieldCheck,
-  Maximize
+  Maximize,
+  FileText
 } from 'lucide-react';
 import { Rnd } from 'react-rnd';
 
@@ -140,14 +141,17 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
     setZIndices(prev => ({ ...prev, [title]: maxZ }));
   };
 
-  // Sandboxed Filesystem Path
-  const [vRoot, setVRoot] = useState<string>('/home/user');
-  const [cwd, setCwd] = useState<string>('/home/user');
+  const vRoot = `/home/${username}`;
+  const [cwd, setCwd] = useState<string>(vRoot);
   const [fsState, setFsState] = useState<Record<string, any>>(() => {
     const saved = localStorage.getItem(`gws_fs_${workspaceId || 'default'}`);
-    return saved ? JSON.parse(saved) : {
-      '/home/user': { type: 'dir', children: ['welcome.txt'] },
-      '/home/user/welcome.txt': { type: 'file', content: `Welcome to GWorkspace OS!\nYour files are saved in local storage.\nWorkspace: ${workspaceId || 'root'}` }
+    if (saved) return JSON.parse(saved);
+    
+    return {
+      '/': { type: 'dir', children: ['home'] },
+      '/home': { type: 'dir', children: [username] },
+      [vRoot]: { type: 'dir', children: ['welcome.txt'] },
+      [`${vRoot}/welcome.txt`]: { type: 'file', content: `Welcome to GWorkspace OS!\nYour files are saved in local storage.\nUser: ${username}\nWorkspace: ${workspaceId || 'root'}` }
     };
   });
 
@@ -215,43 +219,54 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
           output.push('  clear         - Clear terminal screen');
           break;
         case 'pwd': output.push(cwd); break;
+        case 'whoami': output.push(username); break;
+        case 'date': output.push(new Date().toString()); break;
+        case 'uname': output.push('Linux gworkspace-node 6.8.0-generic x86_64 GNU/Linux'); break;
+        case 'echo': output.push(args.slice(1).join(' ')); break;
         case 'ls': {
           const target = args[1] ? sanitizePath(args[1]) : cwd;
           const node = currentFs[target];
-          if (node && node.type === 'dir') output.push(node.children.join('  '));
-          else output.push(`ls: ${args[1] || '.'}: No such directory`);
+          if (node && node.type === 'dir') {
+            if (node.children.length === 0) output.push('total 0');
+            else output.push(node.children.join('  '));
+          } else output.push(`ls: cannot access '${args[1] || '.'}': No such file or directory`);
           break;
         }
         case 'cd': {
           const target = sanitizePath(args[1] || '~');
           const node = currentFs[target];
           if (node && node.type === 'dir') setCwd(target);
-          else output.push(`cd: ${args[1]}: No such directory`);
+          else output.push(`cd: ${args[1]}: No such file or directory`);
           break;
         }
         case 'cat': {
           const target = sanitizePath(args[1]);
           const node = currentFs[target];
           if (node && node.type === 'file') output.push(node.content);
-          else output.push(`cat: ${args[1]}: No such file`);
+          else output.push(`cat: ${args[1]}: No such file or directory`);
           break;
         }
         case 'mkdir': {
           const target = sanitizePath(args[1]);
-          if (!args[1]) { output.push('Usage: mkdir <dirname>'); break; }
+          if (!args[1]) { output.push('mkdir: missing operand'); break; }
           currentFs[target] = { type: 'dir', children: [] };
           const parentPath = target.substring(0, target.lastIndexOf('/')) || '/';
-          if (currentFs[parentPath]) currentFs[parentPath].children.push(target.split('/').pop());
+          if (currentFs[parentPath]) {
+            const name = target.split('/').pop();
+            if (!currentFs[parentPath].children.includes(name)) currentFs[parentPath].children.push(name);
+          }
           setFsState(currentFs);
-          output.push(`Created directory: ${args[1]}`);
           break;
         }
         case 'touch': {
           const target = sanitizePath(args[1]);
-          if (!args[1]) { output.push('Usage: touch <filename>'); break; }
+          if (!args[1]) { output.push('touch: missing file operand'); break; }
           currentFs[target] = { type: 'file', content: '' };
           const parentPath = target.substring(0, target.lastIndexOf('/')) || '/';
-          if (currentFs[parentPath]) currentFs[parentPath].children.push(target.split('/').pop());
+          if (currentFs[parentPath]) {
+            const name = target.split('/').pop();
+            if (!currentFs[parentPath].children.includes(name)) currentFs[parentPath].children.push(name);
+          }
           setFsState(currentFs);
           break;
         }
@@ -264,7 +279,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
               currentFs[parentPath].children = currentFs[parentPath].children.filter((c: string) => c !== target.split('/').pop());
             }
             setFsState(currentFs);
-          } else output.push(`rm: ${args[1]}: No such file or directory`);
+          } else output.push(`rm: cannot remove '${args[1]}': No such file or directory`);
           break;
         }
         case 'code': setVscodeOpen(true); bringToFront('Visual Studio Code'); break;
@@ -272,7 +287,7 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
         case 'calc': setCalcOpen(true); bringToFront('Calculator'); break;
         case 'monitor': setMonitorOpen(true); bringToFront('Cluster Monitor'); break;
         default:
-          output.push(`Command not found: ${baseCmd}`);
+          output.push(`${baseCmd}: command not found`);
       }
 
       if (output.length > 0) setHistory(prev => [...prev, ...output]);
@@ -439,17 +454,57 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
           </div>
         </InternalWindow>
 
-        <InternalWindow title="File Infrastructure" icon={Folder} isOpen={homeOpen} onClose={() => setHomeOpen(false)} width={700} height={450} defaultX={250} defaultY={150} {...commonProps}>
+        <InternalWindow title="File Infrastructure" icon={Folder} isOpen={homeOpen} onClose={() => setHomeOpen(false)} width={800} height={500} defaultX={250} defaultY={150} {...commonProps}>
           <div className={`flex h-full ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'}`}>
-            <div className={`w-56 border-r p-6 space-y-3 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="p-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-blue-600/20"><Folder size={14}/> Root Vault</div>
-              <div className={`p-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-colors cursor-pointer ${isDarkMode ? 'text-white/20 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-100'}`}><Activity size={14}/> Recent Logs</div>
-            </div>
-            <div className="flex-1 p-12 flex flex-col items-center justify-center gap-4">
-              <div className={`w-24 h-24 rounded-[40px] flex items-center justify-center ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
-                <ShieldCheck size={48} className={isDarkMode ? 'text-white/5' : 'text-slate-100'} />
+            <div className={`w-56 border-r p-6 space-y-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="space-y-1">
+                <p className={`text-[9px] font-black uppercase tracking-widest px-3 mb-2 ${isDarkMode ? 'text-white/20' : 'text-slate-400'}`}>System</p>
+                <div className="p-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-blue-600/20 cursor-pointer"><Folder size={14}/> Root Vault</div>
+                <div className={`p-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-colors cursor-pointer ${isDarkMode ? 'text-white/40 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}><Activity size={14}/> Node Stats</div>
               </div>
-              <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-white/20' : 'text-slate-300'}`}>Hardware Sandbox Active</p>
+            </div>
+            
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className={`h-12 border-b flex items-center px-6 gap-4 ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                <div className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>
+                  <span>/</span> <span>home</span> <span>/</span> <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>{username}</span>
+                </div>
+              </div>
+              
+              <div className="flex-1 p-8 overflow-y-auto">
+                <div className="grid grid-cols-4 gap-6">
+                  {fsState[cwd]?.children?.map((item: string) => {
+                    const fullPath = `${cwd}/${item}`.replace(/\/+/g, '/');
+                    const isDir = fsState[fullPath]?.type === 'dir';
+                    return (
+                      <div 
+                        key={item} 
+                        className={`flex flex-col items-center gap-3 p-4 rounded-3xl transition-all cursor-pointer group ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}
+                        onDoubleClick={() => isDir && setCwd(fullPath)}
+                      >
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${isDir ? 'text-blue-500' : (isDarkMode ? 'text-white/20' : 'text-slate-300')}`}>
+                          {isDir ? <Folder size={40} fill="currentColor" fillOpacity={0.1} /> : <FileText size={40} />}
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-wider text-center break-all ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>{item}</span>
+                      </div>
+                    );
+                  })}
+                  {(!fsState[cwd]?.children || fsState[cwd].children.length === 0) && (
+                    <div className="col-span-4 flex flex-col items-center justify-center py-20 opacity-20">
+                      <Folder size={64} strokeWidth={1} />
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-4">Directory Empty</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className={`h-10 border-t flex items-center px-6 justify-between ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <span className={`text-[9px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white/20' : 'text-slate-400'}`}>{fsState[cwd]?.children?.length || 0} Items</span>
+                <div className="flex items-center gap-2">
+                   <ShieldCheck size={12} className="text-emerald-500" />
+                   <span className={`text-[9px] font-black uppercase tracking-widest text-emerald-500`}>Storage Encrypted</span>
+                </div>
+              </div>
             </div>
           </div>
         </InternalWindow>

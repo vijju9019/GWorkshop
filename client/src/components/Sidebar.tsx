@@ -109,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, is
           className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-bold text-sm tracking-tight group ${isDarkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' : 'text-red-500 hover:text-red-600 hover:bg-red-50'}`}
         >
           <LogOut size={20} className="group-hover:translate-x-1 transition-transform" />
-          Terminate Session
+          Logout
         </button>
       </div>
 

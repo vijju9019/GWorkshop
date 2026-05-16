@@ -31,6 +31,8 @@ interface MockAppProps {
 }
 
 const MockApp: React.FC<MockAppProps> = ({ appId }) => {
+  const [browserUrl, setBrowserUrl] = React.useState('https://www.google.com/search?igu=1');
+
   if (appId === 'docs') {
     return (
       <div className="flex flex-col h-full bg-[#f8f9fa] font-sans">
@@ -189,8 +191,6 @@ const MockApp: React.FC<MockAppProps> = ({ appId }) => {
       </div>
     );
   }
-
-  const [browserUrl, setBrowserUrl] = React.useState('https://www.google.com/search?igu=1');
 
   if (appId === 'chrome') {
     return (
