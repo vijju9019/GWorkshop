@@ -28,6 +28,7 @@ interface LinuxDesktopProps {
   user: any;
   isDarkMode?: boolean;
   workspaceId?: string;
+  ownerId?: string;
   template?: string;
   wallpaper?: string;
 }
@@ -81,7 +82,7 @@ const InternalWindow = ({ title, icon: Icon, isOpen, onClose, children, classNam
   );
 };
 
-const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, template = 'Ubuntu Desktop', wallpaper = '/luffy_gear5.png' }) => {
+const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, ownerId, template = 'Ubuntu Desktop', wallpaper = '/luffy_gear5.png' }) => {
   const username = (user?.displayName || user?.email || 'user').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   
   const getOSDefaults = (t: string) => {
@@ -155,9 +156,80 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
     };
   });
 
+  const [fsLoaded, setFsLoaded] = useState(false);
+
   useEffect(() => {
+    const loadFileSystem = async () => {
+      if (!workspaceId) {
+        setFsLoaded(true);
+        return;
+      }
+      const oId = ownerId || user?.uid;
+      if (!oId) {
+        setFsLoaded(true);
+        return;
+      }
+      
+      try {
+        const res = await fetch(`http://localhost:3001/api/workspaces/${oId}/${workspaceId}/fs`);
+        if (res.ok) {
+          const remoteFs = await res.json();
+          if (remoteFs) {
+            setFsState(remoteFs);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load VFS from server, falling back to local storage", err);
+      } finally {
+        setFsLoaded(true);
+      }
+    };
+    loadFileSystem();
+  }, [workspaceId, ownerId, user?.uid]);
+
+  useEffect(() => {
+    if (!fsLoaded) return;
+    
+    // Save to local storage as fallback
     localStorage.setItem(`gws_fs_${workspaceId || 'default'}`, JSON.stringify(fsState));
-  }, [fsState, workspaceId]);
+    
+    // Save to server
+    if (workspaceId) {
+      const oId = ownerId || user?.uid;
+      if (oId) {
+        fetch(`http://localhost:3001/api/workspaces/${oId}/${workspaceId}/fs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fsState })
+        }).catch(err => {
+          console.error("Failed to save VFS to server", err);
+        });
+      }
+    }
+  }, [fsState, workspaceId, ownerId, user?.uid, fsLoaded]);
+
+  // Poll for changes from server every 5 seconds
+  useEffect(() => {
+    if (!workspaceId || !fsLoaded) return;
+    const oId = ownerId || user?.uid;
+    if (!oId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`http://localhost:3001/api/workspaces/${oId}/${workspaceId}/fs`);
+        if (res.ok) {
+          const remoteFs = await res.json();
+          if (remoteFs && JSON.stringify(remoteFs) !== JSON.stringify(fsState)) {
+            setFsState(remoteFs);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to sync VFS from server", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [workspaceId, ownerId, user?.uid, fsLoaded, fsState]);
 
   useEffect(() => {
     try {

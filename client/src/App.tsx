@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const fetchWorkspaces = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/workspaces/${user.uid}`);
+      const res = await fetch(`http://localhost:3001/api/workspaces/${user.uid}?email=${user.email || ''}`);
       if (res.ok) {
         const data = await res.json();
         if (data.length === 0) {
@@ -69,10 +69,45 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchWorkspaces();
-      // Removed auto-launch for guests to prevent "opening directly" issue
-      // Guests will now land on the dashboard and click "Open Session" manually.
+      // Check query parameters for shared workspace invite
+      const checkShareParam = async () => {
+        const params = new URLSearchParams(window.location.search);
+        const shareWsId = params.get('shareWorkspace');
+        const ownerId = params.get('ownerId');
+        
+        if (shareWsId && ownerId) {
+          try {
+            console.log(`Accepting share for workspace ${shareWsId} owned by ${ownerId}...`);
+            const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${shareWsId}/share`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user.email })
+            });
+            if (res.ok) {
+              // Clear search params
+              window.history.replaceState({}, document.title, window.location.pathname);
+              // Fetch latest workspaces so this shared workspace is present
+              await fetchWorkspaces();
+              // Launch it!
+              launchWorkspace(shareWsId);
+            }
+          } catch (err) {
+            console.error('Failed to auto-join shared workspace', err);
+          }
+        }
+      };
+      checkShareParam();
     } else {
       setWorkspaces([]);
+      // Check if there is an invite while not logged in
+      const params = new URLSearchParams(window.location.search);
+      const shareWsId = params.get('shareWorkspace');
+      const ownerId = params.get('ownerId');
+      if (shareWsId && ownerId) {
+        localStorage.setItem('pendingShare', JSON.stringify({ shareWsId, ownerId }));
+        // Clean URL so it doesn't loop
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
   }, [user]);
 
@@ -84,7 +119,37 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = (loggedInUser: User) => setUser(loggedInUser);
+  const handleLogin = async (loggedInUser: User) => {
+    setUser(loggedInUser);
+    
+    // Check if there is a pending share in localStorage
+    const pendingShareStr = localStorage.getItem('pendingShare');
+    if (pendingShareStr) {
+      try {
+        const { shareWsId, ownerId } = JSON.parse(pendingShareStr);
+        localStorage.removeItem('pendingShare');
+        
+        console.log(`Processing pending share for workspace ${shareWsId}...`);
+        const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${shareWsId}/share`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loggedInUser.email })
+        });
+        if (res.ok) {
+          const fetchRes = await fetch(`http://localhost:3001/api/workspaces/${loggedInUser.uid}?email=${loggedInUser.email || ''}`);
+          if (fetchRes.ok) {
+            const data = await fetchRes.json();
+            setWorkspaces(data);
+            setTimeout(() => {
+              launchWorkspace(shareWsId);
+            }, 500);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to process pending share', err);
+      }
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -116,9 +181,11 @@ const App: React.FC = () => {
 
   const deleteWorkspace = async (id: string) => {
     if (!user) return;
+    const ws = workspaces.find(w => w.id === id);
+    const ownerId = ws?.ownerId || user.uid;
     setWorkspaces(prev => prev.filter(w => w.id !== id));
     try {
-      await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}`, { method: 'DELETE' });
+      await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${id}`, { method: 'DELETE' });
     } catch (err) {
       console.error('Failed to delete workspace', err);
     }
@@ -126,6 +193,8 @@ const App: React.FC = () => {
 
   const toggleWorkspaceStatus = async (id: string) => {
     if (!user) return;
+    const ws = workspaces.find(w => w.id === id);
+    const ownerId = ws?.ownerId || user.uid;
     let newStatus = 'stopped';
     setWorkspaces(prev => prev.map(w => {
       if (w.id === id) {
@@ -135,7 +204,7 @@ const App: React.FC = () => {
       return w;
     }));
     try {
-      await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}`, {
+      await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -147,19 +216,41 @@ const App: React.FC = () => {
 
   const launchWorkspace = async (id: string) => {
     if (!user) return;
+    const ws = workspaces.find(w => w.id === id);
+    const ownerId = ws?.ownerId || user.uid;
     setWorkspaces(prev => prev.map(w =>
       w.id === id ? { ...w, status: 'running' as const } : w
     ));
     setActiveWorkspaceId(id);
     setIsDesktopMode(true);
     try {
-      await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}`, {
+      await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'running' })
       });
     } catch (err) {
       console.error('Failed to update workspace status', err);
+    }
+  };
+
+  const shareWorkspace = async (id: string, email: string) => {
+    if (!user) return;
+    const ws = workspaces.find(w => w.id === id);
+    const ownerId = ws?.ownerId || user.uid;
+    try {
+      const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${id}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        const updatedWs = await res.json();
+        setWorkspaces(prev => prev.map(w => w.id === id ? { ...w, sharedWith: updatedWs.sharedWith } : w));
+        return updatedWs;
+      }
+    } catch (err) {
+      console.error('Failed to share workspace', err);
     }
   };
 
@@ -299,6 +390,8 @@ const App: React.FC = () => {
               onLaunch={launchWorkspace}
               onDelete={deleteWorkspace}
               onToggleStatus={toggleWorkspaceStatus}
+              onShare={shareWorkspace}
+              currentUser={user}
               isDarkMode={isDarkMode}
               autoOpenCreateModal={shouldOpenCreateModal}
               setAutoOpenCreateModal={setShouldOpenCreateModal}

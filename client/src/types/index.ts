@@ -6,6 +6,8 @@ export interface Workspace {
   storageUsage: string;
   lastActive: string;
   template: string;
+  sharedWith?: string[];
+  ownerId?: string;
 }
 
 export interface AppConfig {

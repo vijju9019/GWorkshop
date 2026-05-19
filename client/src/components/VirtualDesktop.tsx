@@ -164,10 +164,12 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   };
 
   const renderWindowContent = (win: WindowState, appUrl?: string) => {
-    // Unique partition per workspace to keep sessions isolated and working in every workspace
-    const partition = `persist:user-${user.uid}-ws-${workspace?.id || 'default'}`;
+    // Unique partition per workspace to keep sessions isolated and working in every workspace.
+    // Use the workspace ownerId to ensure collaborators share the same session context.
+    const ownerId = workspace?.ownerId || user.uid;
+    const partition = `persist:user-${ownerId}-ws-${workspace?.id || 'default'}`;
 
-    if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} template={workspace?.template} wallpaper={wallpaper} />;
+    if (win.appId === 'linux') return <LinuxDesktop user={user} isDarkMode={isDarkMode} workspaceId={workspace?.id} ownerId={workspace?.ownerId} template={workspace?.template} wallpaper={wallpaper} />;
     if (win.appId === 'settings') return (
       <SettingsApp wallpaper={wallpaper} onWallpaperChange={setWallpaper} />
     );

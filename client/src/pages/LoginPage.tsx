@@ -42,7 +42,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode }) => {
 
     if (isMock) {
       setTimeout(() => {
-        handleGuestLogin();
+        const username = email.split('@')[0];
+        const mockUid = 'mock-uid-' + email.replace(/[^a-zA-Z0-9]/g, '');
+        onLogin({
+          displayName: username.charAt(0).toUpperCase() + username.slice(1),
+          email: email,
+          photoURL: `https://ui-avatars.com/api/?name=${username}&background=64748b&color=fff`,
+          uid: mockUid,
+          isGuest: false
+        });
       }, 1000);
       return;
     }
