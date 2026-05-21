@@ -77,19 +77,22 @@ const App: React.FC = () => {
         
         if (shareWsId && ownerId) {
           try {
-            console.log(`Accepting share for workspace ${shareWsId} owned by ${ownerId}...`);
-            const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${shareWsId}/share`, {
+            console.log(`Forking shared workspace ${shareWsId} owned by ${ownerId}...`);
+            const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${shareWsId}/fork`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: user.email })
+              body: JSON.stringify({ newOwnerId: user.uid })
             });
             if (res.ok) {
+              const newWs = await res.json();
               // Clear search params
               window.history.replaceState({}, document.title, window.location.pathname);
               // Fetch latest workspaces so this shared workspace is present
               await fetchWorkspaces();
               // Launch it!
-              launchWorkspace(shareWsId);
+              setTimeout(() => {
+                launchWorkspace(newWs.id);
+              }, 500);
             }
           } catch (err) {
             console.error('Failed to auto-join shared workspace', err);
@@ -129,19 +132,20 @@ const App: React.FC = () => {
         const { shareWsId, ownerId } = JSON.parse(pendingShareStr);
         localStorage.removeItem('pendingShare');
         
-        console.log(`Processing pending share for workspace ${shareWsId}...`);
-        const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${shareWsId}/share`, {
+        console.log(`Processing pending fork for workspace ${shareWsId}...`);
+        const res = await fetch(`http://localhost:3001/api/workspaces/${ownerId}/${shareWsId}/fork`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: loggedInUser.email })
+          body: JSON.stringify({ newOwnerId: loggedInUser.uid })
         });
         if (res.ok) {
+          const newWs = await res.json();
           const fetchRes = await fetch(`http://localhost:3001/api/workspaces/${loggedInUser.uid}?email=${loggedInUser.email || ''}`);
           if (fetchRes.ok) {
             const data = await fetchRes.json();
             setWorkspaces(data);
             setTimeout(() => {
-              launchWorkspace(shareWsId);
+              launchWorkspace(newWs.id);
             }, 500);
           }
         }
@@ -251,6 +255,25 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to share workspace', err);
+    }
+  };
+
+  const mergeWorkspace = async (id: string) => {
+    if (!user) return;
+    try {
+      const res = await fetch(`http://localhost:3001/api/workspaces/${user.uid}/${id}/merge`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        alert('Merged successfully into original workspace!');
+        await fetchWorkspaces();
+      } else {
+        const errorData = await res.json();
+        alert('Merge failed: ' + (errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Failed to merge workspace', err);
+      alert('Failed to merge workspace');
     }
   };
 
@@ -391,6 +414,7 @@ const App: React.FC = () => {
               onDelete={deleteWorkspace}
               onToggleStatus={toggleWorkspaceStatus}
               onShare={shareWorkspace}
+              onMerge={mergeWorkspace}
               currentUser={user}
               isDarkMode={isDarkMode}
               autoOpenCreateModal={shouldOpenCreateModal}

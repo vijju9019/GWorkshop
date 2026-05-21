@@ -8,6 +8,8 @@ export interface Workspace {
   template: string;
   sharedWith?: string[];
   ownerId?: string;
+  parentWorkspaceId?: string;
+  parentOwnerId?: string;
 }
 
 export interface AppConfig {

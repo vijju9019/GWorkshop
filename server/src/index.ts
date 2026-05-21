@@ -441,6 +441,84 @@ app.post('/api/workspaces/:userId/:workspaceId/fs', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/workspaces/:ownerId/:workspaceId/fork', (req, res) => {
+  const { ownerId, workspaceId } = req.params;
+  const { newOwnerId } = req.body;
+  
+  if (!newOwnerId) {
+    return res.status(400).json({ error: 'newOwnerId is required' });
+  }
+
+  const db = readDB();
+  if (!db.workspaces[ownerId]) {
+    return res.status(404).json({ error: 'Original user not found' });
+  }
+
+  const originalWs = db.workspaces[ownerId].find((w: any) => w.id === workspaceId);
+  if (!originalWs) {
+    return res.status(404).json({ error: 'Original workspace not found' });
+  }
+
+  if (!db.workspaces[newOwnerId]) {
+    db.workspaces[newOwnerId] = [];
+  }
+
+  const newWorkspace = {
+    ...originalWs,
+    id: Math.random().toString(36).substr(2, 9),
+    name: `${originalWs.name} (Fork)`,
+    ownerId: newOwnerId,
+    parentWorkspaceId: workspaceId,
+    parentOwnerId: ownerId,
+    sharedWith: [],
+    status: 'stopped',
+    lastActive: 'Just forked'
+  };
+
+  db.workspaces[newOwnerId].push(newWorkspace);
+  writeDB(db);
+
+  res.status(201).json(newWorkspace);
+});
+
+app.post('/api/workspaces/:userId/:workspaceId/merge', (req, res) => {
+  const { userId, workspaceId } = req.params;
+  
+  const db = readDB();
+  if (!db.workspaces[userId]) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const currentWs = db.workspaces[userId].find((w: any) => w.id === workspaceId);
+  if (!currentWs) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
+  const { parentWorkspaceId, parentOwnerId } = currentWs;
+  if (!parentWorkspaceId || !parentOwnerId) {
+    return res.status(400).json({ error: 'Not a forked workspace' });
+  }
+
+  if (!db.workspaces[parentOwnerId]) {
+    return res.status(404).json({ error: 'Parent owner not found' });
+  }
+
+  const parentWsIndex = db.workspaces[parentOwnerId].findIndex((w: any) => w.id === parentWorkspaceId);
+  if (parentWsIndex === -1) {
+    return res.status(404).json({ error: 'Parent workspace not found' });
+  }
+
+  // Perform a simple overwrite merge for fsState
+  if (currentWs.fsState) {
+     db.workspaces[parentOwnerId][parentWsIndex].fsState = currentWs.fsState;
+     db.workspaces[parentOwnerId][parentWsIndex].lastActive = 'Merged recently';
+  }
+
+  writeDB(db);
+
+  res.json({ success: true, message: 'Merged successfully into original workspace' });
+});
+
 app.delete('/api/workspaces/:userId/:workspaceId', (req, res) => {
   const { userId, workspaceId } = req.params;
   const db = readDB();

@@ -12,6 +12,7 @@ interface WorkspaceManagerProps {
   onDelete: (id: string) => void;
   onToggleStatus: (id: string) => void;
   onShare?: (id: string, email: string) => void;
+  onMerge?: (id: string) => void;
   currentUser?: any;
   isDarkMode?: boolean;
   autoOpenCreateModal?: boolean;
@@ -35,6 +36,7 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
   onDelete, 
   onToggleStatus, 
   onShare,
+  onMerge,
   currentUser,
   isDarkMode, 
   autoOpenCreateModal, 
@@ -162,6 +164,13 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                           Shared with you
                         </div>
                       )}
+
+                      {ws.parentWorkspaceId && (
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`} title="Forked Workspace">
+                          <Layout size={10} />
+                          Fork
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -184,6 +193,15 @@ const WorkspaceManager: React.FC<WorkspaceManagerProps> = ({
                       >
                         <Trash2 size={20} />
                       </button>
+                      {ws.parentWorkspaceId && onMerge && (
+                        <button 
+                          onClick={() => onMerge(ws.id)}
+                          className={`p-3 rounded-xl transition-colors ${isDarkMode ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/40' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                          title="Merge to Original Workspace"
+                        >
+                          <ArrowRight size={20} />
+                        </button>
+                      )}
                     </>
                   ) : (
                     <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-white/5 text-white/30' : 'bg-slate-50 text-slate-400'}`}>
