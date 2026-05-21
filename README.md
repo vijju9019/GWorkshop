@@ -49,7 +49,7 @@ flowchart TB
     
     subgraph DataPlane ["Virtualization & Execution Plane"]
         ContainerMgr[Container Lifecycle Manager]:::dataPlane
-        VFS[Virtual File System (VFS) Router]:::dataPlane
+        VFS["Virtual File System (VFS) Router"]:::dataPlane
         IPCBridge[Native IPC Bridge]:::dataPlane
     end
 
