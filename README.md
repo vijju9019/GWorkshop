@@ -20,21 +20,63 @@ The system is engineered around a **Tiered Isolation Model**, ensuring that hard
 ### **System Orchestration Flow**
 
 ```mermaid
-graph TD
-    A[Enterprise Entry] -->|Auth Token| B{Identity Verification}
-    B -->|Authorized| C[Cluster Dashboard]
-    B -->|Unauthorized| A
+flowchart TB
+    %% Styling Definitions
+    classDef client fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#333
+    classDef controlPlane fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#0d47a1
+    classDef dataPlane fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#1b5e20
+    classDef database fill:#fff3e0,stroke:#fb8c00,stroke-width:2px,color:#e65100
+
+    %% Actors
+    User([End User / Operator]):::client
     
-    C -->|Select Node| D[Provisioning Engine]
-    D -->|Resource Allocation| E[Container Initialization]
+    subgraph ClientLayer ["Client Access Layer (Thin Client)"]
+        UI[React 19 Dashboard UI]:::client
+        Desktop[Virtual Desktop Environment]:::client
+        Sandbox[Chromium Sandboxed WebViews]:::client
+    end
+
+    subgraph SecurityGateway ["Security & Identity Gateway"]
+        Auth{Zero-Trust Auth Policy}:::controlPlane
+        JWT[Token Validation]:::controlPlane
+    end
+
+    subgraph ControlPlane ["Orchestration & Control Plane"]
+        Orchestrator[Workspace Orchestrator]:::controlPlane
+        Provisioner[Dynamic Provisioning Service]:::controlPlane
+        StateMgr[State Serialization Engine]:::controlPlane
+    end
     
-    E -->|Hydrate Context| F[Linux Virtual Desktop]
-    F -->|Spawn Runtime| G[Sandboxed Application contexts]
+    subgraph DataPlane ["Virtualization & Execution Plane"]
+        ContainerMgr[Container Lifecycle Manager]:::dataPlane
+        VFS[Virtual File System (VFS) Router]:::dataPlane
+        IPCBridge[Native IPC Bridge]:::dataPlane
+    end
+
+    subgraph PersistenceLayer ["Distributed Persistence"]
+        CloudDB[(Cloud Sync State DB)]:::database
+        BlobStore[(Ephemeral Blob Store)]:::database
+    end
+
+    %% Interaction Paths
+    User -- "Encrypted Transport" --> UI
+    UI -- "Access Request" --> Auth
+    Auth -- "Validate" --> JWT
+    JWT -- "Issue JWT" --> UI
     
-    G <-->|IPC Bridge| H[State Serialization Engine]
-    H <-->|Sync| I[(Persistent Cloud Store)]
+    UI -- "Deploy Workspace" --> Orchestrator
+    Orchestrator -- "Allocate Quotas" --> Provisioner
+    Provisioner -- "Spawn Sandbox" --> ContainerMgr
     
-    F ---|Session Partitioning| J[Hardware Abstraction Layer]
+    ContainerMgr -- "Hydrate Environment" --> Desktop
+    Desktop -- "Isolated App Execution" --> Sandbox
+    
+    Sandbox -- "Secure IPC" --> IPCBridge
+    IPCBridge -- "File I/O" --> VFS
+    IPCBridge -- "Event Telemetry" --> StateMgr
+    
+    StateMgr <== "Real-time Delta Sync" ==> CloudDB
+    VFS <== "Async Block Sync" ==> BlobStore
 ```
 
 ### 1. The Virtualization Layer
