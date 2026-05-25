@@ -60,7 +60,7 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [launcherOpen, setLauncherOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [wallpaper, setWallpaper] = useState('/luffy_gear5.png');
+  const [wallpaper, setWallpaper] = useState('/wallpaper.png');
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
 
   const [isConnecting, setIsConnecting] = useState(true);
@@ -199,7 +199,7 @@ const VirtualDesktop: React.FC<VirtualDesktopProps> = ({ user, workspace, isDark
   return (
     <div 
       className="relative w-full h-screen overflow-hidden flex flex-col transition-all duration-700"
-      style={{ backgroundImage: `url('${wallpaper}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+      style={{ backgroundImage: `url('${wallpaper}')`, backgroundSize: '100% 100%', backgroundPosition: 'center' }}
     >
       {/* Connection Overlay */}
       {isConnecting && (

@@ -82,7 +82,7 @@ const InternalWindow = ({ title, icon: Icon, isOpen, onClose, children, classNam
   );
 };
 
-const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, ownerId, template = 'Ubuntu Desktop', wallpaper = '/luffy_gear5.png' }) => {
+const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspaceId, ownerId, template = 'Ubuntu Desktop', wallpaper = '/wallpaper.png' }) => {
   const username = (user?.displayName || user?.email || 'user').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   
   const getOSDefaults = (t: string) => {
@@ -386,8 +386,8 @@ const LinuxDesktop: React.FC<LinuxDesktopProps> = ({ user, isDarkMode, workspace
 
   return (
     <div 
-      className={`w-full h-full flex flex-col overflow-hidden relative font-sans select-none bg-cover bg-center transition-opacity duration-700`}
-      style={{ backgroundImage: `url('${wallpaper}')` }}
+      className={`w-full h-full flex flex-col overflow-hidden relative font-sans select-none bg-center transition-opacity duration-700`}
+      style={{ backgroundImage: `url('${wallpaper}')`, backgroundSize: '100% 100%' }}
     >
       {/* Background Overlay */}
       <div className={`absolute inset-0 ${isDarkMode ? 'bg-slate-950/40' : 'bg-white/10'} backdrop-blur-[2px]`} />

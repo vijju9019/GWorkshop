@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Monitor, Terminal, Globe, Palette, Wifi, Shield, Bell,
   User, Info, ChevronRight, Check, RefreshCw, HardDrive,
-  Cpu, MemoryStick, Layout
+  Cpu, MemoryStick, Layout, Upload, Image as ImageIcon
 } from 'lucide-react';
 
 interface SystemInfo {
@@ -45,6 +45,43 @@ const SettingsApp: React.FC<SettingsAppProps> = ({ wallpaper, onWallpaperChange 
   const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
   const [customWallpaper, setCustomWallpaper] = useState('');
   const [selectedEngine, setSelectedEngine] = useState('google');
+  
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    setIsUploading(true);
+    
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('files', file);
+
+    try {
+      const res = await fetch('http://localhost:3001/api/storage/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        const filename = file.name;
+        const wallpaperUrl = `http://localhost:3001/api/storage/download/${filename}`;
+        onWallpaperChange(wallpaperUrl);
+        showSaved();
+      } else {
+        alert('Failed to upload wallpaper.');
+      }
+    } catch (err) {
+      console.error('Error uploading wallpaper:', err);
+      alert('Error uploading wallpaper.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
   const [fontSize, setFontSize] = useState(14);
   const [termTheme, setTermTheme] = useState('dark');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -264,6 +301,23 @@ const SettingsApp: React.FC<SettingsAppProps> = ({ wallpaper, onWallpaperChange 
             <h2 className="text-xl font-semibold text-gray-800 mb-1">Personalization</h2>
             <p className="text-sm text-gray-500 mb-6">Change the desktop wallpaper and visual theme.</p>
             <div className="space-y-6">
+              {/* Active Wallpaper Preview */}
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-4">
+                <div className="w-24 h-16 rounded-xl overflow-hidden shadow-md flex-shrink-0 border border-gray-200 bg-gray-200">
+                  <div 
+                    className="w-full h-full bg-cover bg-center"
+                    style={{ backgroundImage: `url(${wallpaper})` }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                    <ImageIcon size={14} className="text-gray-400" />
+                    Active Wallpaper
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{wallpaper.startsWith('http') ? wallpaper : 'System Default'}</p>
+                </div>
+              </div>
+
               <div>
                 <p className="font-medium text-gray-800 text-sm mb-3">Wallpaper Presets</p>
                 <div className="grid grid-cols-4 gap-3">
@@ -287,6 +341,29 @@ const SettingsApp: React.FC<SettingsAppProps> = ({ wallpaper, onWallpaperChange 
                   ))}
                 </div>
               </div>
+
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="font-medium text-gray-800 text-sm mb-2">Upload Custom Wallpaper</p>
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <button
+                    onClick={handleUploadClick}
+                    disabled={isUploading}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed border-gray-300 rounded-xl text-sm font-semibold text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/30 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload size={16} />
+                    {isUploading ? 'Uploading Wallpaper...' : 'Select and Upload Image from PC'}
+                  </button>
+                  <p className="text-[11px] text-gray-400">Supported formats: JPG, PNG, GIF, SVG, WEBP</p>
+                </div>
+              </div>
+
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <p className="font-medium text-gray-800 text-sm mb-2">Custom Wallpaper URL</p>
                 <div className="flex gap-2">
